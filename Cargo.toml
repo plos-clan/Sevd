@@ -1,0 +1,11 @@
+[package]
+name = "Sevd"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+getopts-macro = "0.1.13"
+line-column = {version="0.3.2", features = ["span"]}
+llvm-sys = "221.0.0"
+mimalloc = "0.1.48"
+text-size = "1.1.1"
