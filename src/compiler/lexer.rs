@@ -43,6 +43,8 @@ pub enum OperatorEnum {
     Eq,        // ==
     BigEq,     // >=
     LesEq,     // <=
+    Big,       // >
+    Less,      // <
     Colon,     // :
     Question,  // ?
     Comma,     // ,
@@ -52,6 +54,8 @@ pub enum OperatorEnum {
     BitOr,     // |
     BitAnd,    // &
     BitXor,    // ^
+    BitLeft,   // <<
+    BitRight,  // >>
     Plus,      // ++
     Minus,     // --
     AddSet,    // +=
@@ -633,6 +637,20 @@ impl<'a> LexerAnalysis<'a> {
                 OperatorEnum::BitOrSet,
                 OperatorEnum::Or,
                 OperatorEnum::BitOr,
+            ),
+            '>' => self.build_three(
+                start_pos,
+                '>',
+                OperatorEnum::BigEq,
+                OperatorEnum::BitRight,
+                OperatorEnum::Big,
+            ),
+            '<' => self.build_three(
+                start_pos,
+                '>',
+                OperatorEnum::LesEq,
+                OperatorEnum::BitLeft,
+                OperatorEnum::Less,
             ),
             '^' => self.build_two(start_pos, OperatorEnum::BitXorSet, OperatorEnum::BitXor),
             '!' => self.build_two(start_pos, OperatorEnum::NotEq, OperatorEnum::Not),

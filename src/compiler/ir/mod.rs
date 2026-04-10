@@ -7,6 +7,7 @@ use super::lexer::OperatorEnum;
 pub enum Pattern {
     Variant { name: Token, args: Vec<Pattern> },
     Bind(Token),
+    Path(),
 }
 
 #[derive(Debug, Clone)]

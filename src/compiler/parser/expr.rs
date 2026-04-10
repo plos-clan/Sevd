@@ -20,12 +20,19 @@ impl ExprParser {
         }
     }
 
+    fn get_token(&mut self) -> Result<Token, ParserError> {
+        let Some(token) = self.tokens.peek().cloned() else {
+            return Err(IllegalExpression(self.fallback_token.clone()));
+        };
+        self.tokens.next();
+        Ok(token)
+    }
+
     fn check_operator(token: &Token) -> Result<(), ParserError> {
-        match token.get_type() {
-            TokenType::Lr('}' | ']' | ')') => Ok(()),
-            TokenType::Operator(_) => Ok(()),
-            _ => Err(IllegalExpression(token.clone())),
+        if !matches!(token.get_type(), TokenType::Operator(_)) {
+            return Ok(());
         }
+        Ok(())
     }
 
     fn prefix_binding_power(operator: &OperatorEnum) -> ((), u8) {
@@ -39,7 +46,7 @@ impl ExprParser {
     fn postfix_binding_power(token: &Token) -> Option<(u8, ())> {
         match token.get_type() {
             TokenType::Operator(OperatorEnum::Plus | OperatorEnum::Minus) => Some((21, ())),
-            TokenType::Lp('[' | '(') | TokenType::Operator(OperatorEnum::BitOr) => Some((27, ())),
+            TokenType::Lp('[' | '(') => Some((27, ())),
             _ => None,
         }
     }
@@ -47,13 +54,25 @@ impl ExprParser {
     fn infix_binding_power(token: &Token) -> Option<(u8, u8)> {
         if let TokenType::Operator(operator) = token.get_type() {
             return match operator {
-                OperatorEnum::Set | OperatorEnum::AddSet | OperatorEnum::SubSet => Some((2, 1)),
+                OperatorEnum::Set
+                | OperatorEnum::AddSet
+                | OperatorEnum::SubSet
+                | OperatorEnum::MulSet
+                | OperatorEnum::DivSet
+                | OperatorEnum::ModSet => Some((2, 1)),
                 OperatorEnum::Question => Some((4, 3)),
                 OperatorEnum::And | OperatorEnum::Or => Some((5, 6)),
                 OperatorEnum::BitOr => Some((7, 8)),
                 OperatorEnum::BitXor => Some((9, 10)),
                 OperatorEnum::BitAnd => Some((11, 12)),
                 OperatorEnum::Eq | OperatorEnum::NotEq => Some((13, 14)),
+                OperatorEnum::BigEq
+                | OperatorEnum::LesEq
+                | OperatorEnum::Big
+                | OperatorEnum::Less => Some((15, 16)),
+                OperatorEnum::BitLeft | OperatorEnum::BitRight => Some((17, 18)),
+                OperatorEnum::Add | OperatorEnum::Sub => Some((19, 20)),
+                OperatorEnum::Mul | OperatorEnum::Div | OperatorEnum::Mod => Some((24, 25)),
                 OperatorEnum::Ref => Some((30, 29)),
                 _ => None,
             };

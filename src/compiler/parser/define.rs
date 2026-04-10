@@ -137,6 +137,7 @@ fn parser_enum_element(parser: &mut Parser) -> Result<Option<(Token, Vec<Token>)
             let enum_fields = if let TokenType::Lp('(') = token.get_type() {
                 parser_enum_fields(parser)?
             } else {
+                parser.cache = Some(token);
                 vec![]
             };
             Ok(Some((name, enum_fields)))

@@ -26,6 +26,7 @@ pub enum TypeKind<'tcx> {
     Float(FltTy),
     Str,
     Null,
+    Void,
 
     Tuple(&'tcx [TypeKind<'tcx>]),
 
