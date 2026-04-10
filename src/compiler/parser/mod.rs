@@ -51,14 +51,15 @@ impl<'a> Parser<'a> {
             self.cache = None;
             Ok(token)
         } else {
-            match self.tokens.peek().cloned() {
-                Some(token) => {
-                    let ret = Ok(token);
-                    self.tokens.next();
-                    ret
-                },
-                None => Ok(Token::no_span_new(TokenType::Eof)),
-            }
+            Ok(self.cache.take().unwrap_or_else(|| {
+                match self.tokens.peek().cloned() {
+                    Some(token) => {
+                        self.tokens.next();
+                        token
+                    }
+                    None => Token::no_span_new(TokenType::Eof),
+                }
+            }))
         }
     }
 

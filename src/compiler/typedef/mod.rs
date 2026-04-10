@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use super::lexer::Token;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

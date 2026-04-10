@@ -94,9 +94,9 @@ fn find_from_module<'a>(
 fn parser_path(
     symtbl: &mut SymbolTable,
     path_token: &Token,
-    path: &String,
+    path: &str,
 ) -> Result<Box<SourceFile>, ParserError> {
-    let normalized_path = Compiler::normalize_path(path.as_str());
+    let normalized_path = Compiler::normalize_path(path);
     let file = find_from_module(symtbl.compiler(), &normalized_path, path_token)?;
     Ok(Box::new(file.clone()))
 }

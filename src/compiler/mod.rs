@@ -105,8 +105,8 @@ impl Compiler {
         file.compiler_header(compiler);
     }
 
-    pub fn add_file(&mut self, path: &String) {
-        self.add_files(vec![path.clone()]);
+    pub fn add_file(&mut self, path: &str) {
+        self.add_files(vec![String::from(path)]);
     }
 
     pub fn add_files(&mut self, paths: Vec<String>) {

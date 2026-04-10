@@ -1,6 +1,6 @@
 
 function main : i32 {
-    a.b(c | d, (|a:i32,b:i64,c|: i32 from {
+    a.b(c | d, |a:i32,b:i64,c|: i32 from {
         1 + 1 == 2;
-    }));
+    });
 }
