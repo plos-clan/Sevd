@@ -6,6 +6,8 @@ mod function;
 mod import;
 mod pattern;
 mod whils;
+mod ifs;
+mod guard;
 
 use super::ir::AstNode;
 use super::symtbl::SymbolTable;

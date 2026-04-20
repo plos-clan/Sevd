@@ -1,6 +1,8 @@
 
 function main : i32 {
-    while let Enum::One(a) = xxx {
+    if let Enum::One(a) = a {
 
+    } elif let Enum::Two(b) = b {
+    
     }
 }

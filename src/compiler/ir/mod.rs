@@ -3,6 +3,12 @@ use crate::compiler::SourceFile;
 use super::lexer::OperatorEnum;
 
 #[derive(Debug, Clone)]
+pub enum GuardNode {
+    Expr(ExprNode),
+    Let { head: Pattern, vars: ExprNode },
+}
+
+#[derive(Debug, Clone)]
 pub enum Pattern {
     Wildcard, // _
     Variant {
@@ -78,7 +84,7 @@ pub enum AstNode {
         blk: Vec<AstNode>,
     },
     WhilePattern {
-        patterns: Vec<AstNode>,
+        patterns: Vec<GuardNode>,
         body: Vec<AstNode>,
     },
     While {
@@ -87,6 +93,11 @@ pub enum AstNode {
     },
     Loop {
         body: Vec<AstNode>,
+    },
+    IfPattern {
+        branches: Vec<GuardNode>,
+        body: Vec<AstNode>,
+        else_body:Option<Vec<AstNode>>,
     },
     Function {
         name: Token,
