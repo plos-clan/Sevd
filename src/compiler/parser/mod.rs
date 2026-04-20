@@ -7,7 +7,7 @@ mod guard;
 mod ifs;
 mod import;
 mod pattern;
-mod whils;
+mod whiles;
 
 use super::ir::AstNode;
 use super::symtbl::SymbolTable;
@@ -15,7 +15,7 @@ use crate::compiler::com_error::ParserError;
 use crate::compiler::com_error::ParserError::LexError;
 use crate::compiler::lexer::Token;
 use crate::compiler::lexer::{LexerAnalysis, TokenType};
-use crate::compiler::parser::define::{enum_parser, var_parser};
+use crate::compiler::parser::define::{enum_parser, struct_parser, var_parser};
 use crate::compiler::parser::function::function_parser;
 use crate::compiler::parser::import::import_parser;
 use std::iter::Peekable;
@@ -82,6 +82,7 @@ impl<'a> Parser<'a> {
             tk if tk.get_type() == &TokenType::Function => Ok(Some(function_parser(self)?)),
             tk if tk.get_type() == &TokenType::Let => Ok(Some(var_parser(self)?)),
             tk if tk.get_type() == &TokenType::Enum => Ok(Some(enum_parser(self)?)),
+            tk if tk.get_type() == &TokenType::Struct => Ok(Some(struct_parser(self)?)),
             _ => Err(ParserError::NotAStatement(token)),
         }
     }

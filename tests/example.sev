@@ -1,4 +1,9 @@
 
+struct Test<T> {
+    field_1: i32,
+    field_2: usize,
+}
 
-function<T,K,V> main1(arg1: T, arg2: K) : i32 {
+function main1<T,K,V>(arg1: T, arg2: K) : i32 {
+
 }

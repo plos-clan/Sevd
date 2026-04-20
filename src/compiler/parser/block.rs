@@ -6,7 +6,7 @@ use crate::compiler::parser::define::var_parser;
 use crate::compiler::parser::expr::get_of_end_expr;
 use crate::compiler::parser::fors::for_parser;
 use crate::compiler::parser::ifs::if_parser;
-use crate::compiler::parser::whils::while_parser;
+use crate::compiler::parser::whiles::while_parser;
 
 fn parse_statement(parser: &mut Parser, token: Token) -> Result<Option<AstNode>, ParserError> {
     match token.get_type() {

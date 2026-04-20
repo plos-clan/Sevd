@@ -2,6 +2,7 @@ use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::{AstNode, Pattern};
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
 use crate::compiler::parser::Parser;
+use crate::compiler::parser::function::parser_generics;
 use crate::compiler::parser::pattern::pattern_parser;
 
 use super::block::block_parser;
@@ -127,4 +128,62 @@ pub fn enum_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
         return Err(ParserError::MissingEnumElement(token));
     }
     Ok(AstNode::EnumDefine { name, variants })
+}
+
+fn field_parser(parser: &mut Parser) -> Result<Vec<(Token, Token)>, ParserError> {
+    let mut token = parser.get_token()?;
+    let mut fields = Vec::new();
+    if !matches!(token.get_type(), TokenType::Lp('{')) {
+        return Err(ParserError::Expected(token, '{'));
+    }
+    loop {
+        token = parser.get_token()?;
+        if matches!(token.get_type(), TokenType::Lr('}')) {
+            break;
+        }
+        if !matches!(token.get_type(), TokenType::Identifier) {
+            return Err(ParserError::ExpectedToken(token, TokenType::Identifier));
+        }
+        let name = token;
+        token = parser.get_token()?;
+        if !matches!(token.get_type(), TokenType::Operator(OperatorEnum::Colon)) {
+            return Err(ParserError::Expected(token, ':'));
+        }
+        token = parser.get_token()?;
+        if !matches!(token.get_type(), TokenType::Identifier) {
+            return Err(ParserError::ExpectedToken(token, TokenType::Identifier));
+        }
+        fields.push((name, token));
+        token = parser.get_token()?;
+        match token.get_type() {
+            TokenType::Operator(OperatorEnum::Comma) => continue,
+            TokenType::Lr('}') => break,
+            _ => return Err(ParserError::Expected(token, '}')),
+        }
+    }
+
+    Ok(fields)
+}
+
+pub fn struct_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
+    let mut token = parser.get_token()?;
+    if !matches!(token.get_type(), TokenType::Identifier) {
+        return Err(ParserError::ExpectedToken(token, TokenType::Identifier));
+    }
+    let name = token;
+    token = parser.get_token()?;
+    let generics = if matches!(token.get_type(), TokenType::Operator(OperatorEnum::Less)) {
+        Some(parser_generics(parser)?)
+    } else if matches!(token.get_type(), TokenType::Lp('{')) {
+        parser.cache = Some(token);
+        None
+    } else {
+        return Err(ParserError::Expected(token, '{'));
+    };
+    let fields = field_parser(parser)?;
+    Ok(AstNode::StructDefine {
+        name,
+        generics,
+        fields,
+    })
 }

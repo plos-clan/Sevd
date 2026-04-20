@@ -111,4 +111,9 @@ pub enum AstNode {
         name: Token,
         variants: Vec<(Token, Vec<Token>)>,
     },
+    StructDefine {
+        name: Token,
+        generics: Option<Vec<Token>>,
+        fields: Vec<(Token, Token)>,
+    },
 }

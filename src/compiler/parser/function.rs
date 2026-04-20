@@ -35,7 +35,7 @@ fn parser_argument(parser: &mut Parser) -> Result<Vec<AstNode>, ParserError> {
     Ok(nodes)
 }
 
-fn parser_generics(parser: &mut Parser) -> Result<Vec<Token>, ParserError> {
+pub fn parser_generics(parser: &mut Parser) -> Result<Vec<Token>, ParserError> {
     let mut tokens = vec![];
     loop {
         let mut token = parser.get_token()?;
@@ -56,18 +56,22 @@ fn parser_generics(parser: &mut Parser) -> Result<Vec<Token>, ParserError> {
 
 pub fn function_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
     let mut token = parser.get_token()?;
-
-    let (generics, name) = if matches!(token.get_type(), TokenType::Operator(OperatorEnum::Less)) {
-        let generics = parser_generics(parser)?;
-        token = parser.get_token()?;
-        if !matches!(token.get_type(), TokenType::Identifier) {
-            return Err(ParserError::ExpectedToken(token, TokenType::Identifier));
-        }
-        (Some(generics), token)
-    } else if matches!(token.get_type(), TokenType::Identifier) {
-        (None, token)
-    } else {
+    if !matches!(token.get_type(), TokenType::Identifier) {
         return Err(ParserError::ExpectedToken(token, TokenType::Identifier));
+    }
+    let name = token;
+    token = parser.get_token()?;
+    let generics = if matches!(token.get_type(), TokenType::Operator(OperatorEnum::Less)) {
+        let generics = parser_generics(parser)?;
+        Some(generics)
+    } else if matches!(
+        token.get_type(),
+        TokenType::Lp('(' | '{') | TokenType::Operator(OperatorEnum::Colon)
+    ) {
+        parser.cache = Some(token);
+        None
+    } else {
+        return Err(ParserError::MissingFunctionBody(token));
     };
 
     token = parser.get_token()?;

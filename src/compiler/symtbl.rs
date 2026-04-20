@@ -3,12 +3,14 @@ use std::collections::HashMap;
 use crate::compiler::Compiler;
 use crate::compiler::typedef::TypeKind;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Element<'a> {
     pub type_kind: TypeKind<'a>,
     pub name: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum ContextType {
     Loop,
@@ -17,6 +19,7 @@ pub enum ContextType {
     Root,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Context<'a> {
     elements: Vec<Element<'a>>,
@@ -32,6 +35,7 @@ impl<'a> Context<'a> {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct SymbolTable<'a> {
     context_stack: Vec<Context<'a>>,
