@@ -5,11 +5,13 @@ use crate::compiler::parser::Parser;
 use crate::compiler::parser::define::var_parser;
 use crate::compiler::parser::expr::get_of_end_expr;
 use crate::compiler::parser::fors::for_parser;
+use crate::compiler::parser::whils::while_parser;
 
 fn parse_statement(parser: &mut Parser, token: Token) -> Result<Option<AstNode>, ParserError> {
     match token.get_type() {
         TokenType::Let => Ok(Some(var_parser(parser)?)),
         TokenType::For => Ok(Some(for_parser(parser)?)),
+        TokenType::While => Ok(Some(while_parser(parser)?)),
         TokenType::End => Ok(None),
         _ => {
             parser.cache = Some(token.clone());

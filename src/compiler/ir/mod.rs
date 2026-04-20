@@ -71,14 +71,22 @@ pub enum AstNode {
         vars: Option<ExprNode>,
         el_blk: Option<Vec<AstNode>>,
     },
-    For {
-        element: Token,
-        iter: ExprNode,
-    },
     ForPattern {
-        element: Pattern,
+        pattern: Pattern,
         exit: bool, // exit ? break : continue
         iter: ExprNode,
+        blk: Vec<AstNode>,
+    },
+    WhilePattern {
+        patterns: Vec<AstNode>,
+        body: Vec<AstNode>,
+    },
+    While {
+        cond: ExprNode,
+        body: Vec<AstNode>,
+    },
+    Loop {
+        body: Vec<AstNode>,
     },
     Function {
         name: Token,

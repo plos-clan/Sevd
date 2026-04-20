@@ -1,6 +1,6 @@
 
 function main : i32 {
-    let (TokenType::Opt(Optt::One) | Optt::Two) = x else {
+    while let Enum::One(a) = xxx {
 
-    };
+    }
 }

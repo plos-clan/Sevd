@@ -5,13 +5,13 @@ use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
 use crate::compiler::parser::block::block_parser;
 use crate::compiler::parser::Parser;
 
-struct ExprParser<'a, 'b> {
+pub struct ExprParser<'a, 'b> {
     fallback_token: Token,
     parser: &'a mut Parser<'b>,
 }
 
 impl<'a, 'b> ExprParser<'a, 'b> {
-    fn new(parser: &'a mut Parser<'b>, fallback_token: Token) -> ExprParser<'a, 'b> {
+    pub fn new(parser: &'a mut Parser<'b>, fallback_token: Token) -> ExprParser<'a, 'b> {
         Self {
             fallback_token,
             parser,
@@ -133,10 +133,19 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         Ok(arguments)
     }
 
+    fn check_operator(token: &Token) -> bool {
+        matches!(token.get_type(), TokenType::Operator(_) | TokenType::Lp('[' | '('))
+    }
+
     fn expr_bp(&mut self, min_bp: u8) -> Result<ExprNode, ParserError> {
         let token = self.get_token()?;
         let mut expr_tree = self.parse_head(token)?;
         while let Ok(token) = self.get_token() {
+
+            if !Self::check_operator(&token) {
+                self.parser.cache = Some(token);
+                break;
+            }
 
             if let Some((l_bp, ())) = Self::postfix_binding_power(&token) {
                 if l_bp < min_bp {
