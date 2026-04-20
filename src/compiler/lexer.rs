@@ -46,6 +46,7 @@ pub enum OperatorEnum {
     Big,       // >
     Less,      // <
     Colon,     // :
+    Path,      // ::
     Question,  // ?
     Comma,     // ,
     Not,       // !
@@ -597,10 +598,21 @@ impl<'a> LexerAnalysis<'a> {
                 self.cache = Some(ch);
                 self.build_number()
             }
-            ':' => Ok(Token {
-                span: self.make_span(start_pos, start_pos),
-                t_type: Operator(OperatorEnum::Colon),
-            }),
+            ':' => {
+                let c = self.next_char();
+                if c == ':' {
+                    Ok(Token {
+                        span: self.make_span(start_pos, start_pos),
+                        t_type: Operator(OperatorEnum::Path),
+                    })
+                }else {
+                    self.cache = Some(c);
+                    Ok(Token {
+                        span: self.make_span(start_pos, start_pos),
+                        t_type: Operator(OperatorEnum::Colon),
+                    })
+                }
+            },
             ',' => Ok(Token {
                 span: self.make_span(start_pos, start_pos),
                 t_type: Operator(OperatorEnum::Comma),

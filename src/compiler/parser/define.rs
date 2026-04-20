@@ -1,63 +1,17 @@
 use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::{AstNode, Pattern};
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
+use crate::compiler::parser::pattern::pattern_parser;
 use crate::compiler::parser::Parser;
-use crate::compiler::parser::expr::get_of_end_expr;
 
 use super::block::block_parser;
 use super::expr::get_of_else_end_expr;
 
-fn irrefutable_pattern_parser(parser: &mut Parser, name: Token) -> Result<AstNode, ParserError> {
-    let mut args = vec![];
-    loop {
-        let mut token = parser.get_token()?;
-        if !matches!(
-            token.get_type(),
-            TokenType::Identifier
-                | TokenType::Number(_)
-                | TokenType::String(_)
-                | TokenType::Null
-                | TokenType::True
-                | TokenType::False,
-        ) {
-            return Err(ParserError::ExpectedToken(token, TokenType::Identifier));
-        }
-        args.push(Pattern::Bind(token));
-        token = parser.get_token()?;
-        match token.get_type() {
-            TokenType::Operator(OperatorEnum::Comma) => {}
-            TokenType::Lr(')') => break,
-            _ => return Err(ParserError::Expected(token, ')')),
-        }
-    }
-
-    let mut token = parser.get_token()?;
-    let TokenType::Operator(OperatorEnum::Set) = token.get_type() else {
-        return Err(ParserError::Expected(token, '='));
-    };
-
-    let expr = get_of_else_end_expr(parser, &name)?;
-
-    token = parser.get_token()?;
-    let el_blk: Option<Vec<AstNode>> = if let TokenType::Else = token.get_type() {
-        Some(block_parser(parser)?)
-    } else {
-        parser.cache = Some(token);
-        None
-    };
-
-    Ok(AstNode::DefineElse {
-        head: Pattern::Variant { name, args },
-        type_name: None,
-        vars: Some(expr),
-        el_blk,
-    })
-}
-
-fn classic_var_parser(
+fn end_var_parser(
     parser: &mut Parser,
-    name: Token,
     has_type: bool,
+    head: Pattern,
+    last: Token,
 ) -> Result<AstNode, ParserError> {
     let type_name = if has_type {
         let type_name = parser.get_token()?;
@@ -68,10 +22,11 @@ fn classic_var_parser(
         match set_opt.get_type() {
             TokenType::Operator(OperatorEnum::Set) => Some(type_name),
             TokenType::End => {
-                return Ok(AstNode::Define {
-                    name,
+                return Ok(AstNode::DefineElse {
+                    head,
                     type_name: Some(type_name),
                     vars: None,
+                    el_blk: None,
                 });
             }
             _ => return Err(ParserError::Expected(set_opt, '=')),
@@ -79,30 +34,38 @@ fn classic_var_parser(
     } else {
         None
     };
-    let expr = get_of_end_expr(parser, &name)?;
-    Ok(AstNode::Define {
-        name,
+    let expr = get_of_else_end_expr(parser, &last)?;
+
+    let else_key = parser.get_token()?;
+    let el_blk: Option<Vec<AstNode>> = if let TokenType::Else = else_key.get_type(){
+        Some(block_parser(parser)?)
+    }else {
+        parser.cache = Some(else_key);
+        None
+    };
+
+    Ok(AstNode::DefineElse {
+        head,
         type_name,
         vars: Some(expr),
+        el_blk,
     })
 }
 
 pub fn var_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
-    let name = parser.get_token()?;
-    if !matches!(name.get_type(), TokenType::Identifier) {
-        return Err(ParserError::ExpectedToken(name, TokenType::Identifier));
-    }
+    let pattern = pattern_parser(parser)?;
+
     let token = parser.get_token()?;
 
     match token.get_type() {
-        TokenType::Operator(OperatorEnum::Colon) => classic_var_parser(parser, name, true),
-        TokenType::Operator(OperatorEnum::Set) => classic_var_parser(parser, name, false),
-        TokenType::End => Ok(AstNode::Define {
-            name,
+        TokenType::Operator(OperatorEnum::Colon) => end_var_parser(parser, true, pattern, token),
+        TokenType::Operator(OperatorEnum::Set) => end_var_parser(parser, false, pattern, token),
+        TokenType::End => Ok(AstNode::DefineElse {
+            head: pattern,
             type_name: None,
             vars: None,
+            el_blk: None,
         }),
-        TokenType::Lp('(') => irrefutable_pattern_parser(parser, name),
         _ => Err(ParserError::Expected(token, '=')),
     }
 }

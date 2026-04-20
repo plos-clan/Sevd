@@ -1,13 +1,23 @@
-use crate::compiler::SourceFile;
 use crate::compiler::lexer::Token;
-
+use crate::compiler::SourceFile;
 use super::lexer::OperatorEnum;
 
 #[derive(Debug, Clone)]
 pub enum Pattern {
-    Variant { name: Token, args: Vec<Pattern> },
+    Wildcard, // _
+    Variant {
+        name: Token,
+        args: Vec<Pattern>,
+    },
     Bind(Token),
-    Path(),
+    Literal(Token),
+    Or(Vec<Pattern>),    // a | b | c
+    Tuple(Vec<Pattern>), // (a, b)
+    Constructor {
+        // path::path(args)
+        path: Vec<Token>,
+        args: Vec<Pattern>,
+    },
 }
 
 #[derive(Debug, Clone)]

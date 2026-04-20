@@ -4,6 +4,7 @@ mod expr;
 mod fors;
 mod function;
 mod import;
+mod pattern;
 
 use super::ir::AstNode;
 use super::symtbl::SymbolTable;
