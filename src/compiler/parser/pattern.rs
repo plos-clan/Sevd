@@ -32,10 +32,7 @@ fn parse_args_in_paren(parser: &mut Parser) -> Result<Vec<Pattern>, ParserError>
     Ok(args)
 }
 
-fn parse_path_or_bind(
-    parser: &mut Parser,
-    first: Token,
-) -> Result<Pattern, ParserError> {
+fn parse_path_or_bind(parser: &mut Parser, first: Token) -> Result<Pattern, ParserError> {
     let mut path = vec![first];
     loop {
         let token = parser.get_token()?;
@@ -94,8 +91,7 @@ fn parse_tuple(parser: &mut Parser) -> Result<Pattern, ParserError> {
             }
         }
         Ok(Pattern::Tuple(elements))
-    }
-    else if matches!(token.get_type(), TokenType::Lr(')')) {
+    } else if matches!(token.get_type(), TokenType::Lr(')')) {
         Ok(first)
     } else {
         Err(ParserError::ExpectedToken(token, TokenType::Lr(')')))

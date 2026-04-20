@@ -605,14 +605,14 @@ impl<'a> LexerAnalysis<'a> {
                         span: self.make_span(start_pos, start_pos),
                         t_type: Operator(OperatorEnum::Path),
                     })
-                }else {
+                } else {
                     self.cache = Some(c);
                     Ok(Token {
                         span: self.make_span(start_pos, start_pos),
                         t_type: Operator(OperatorEnum::Colon),
                     })
                 }
-            },
+            }
             ',' => Ok(Token {
                 span: self.make_span(start_pos, start_pos),
                 t_type: Operator(OperatorEnum::Comma),

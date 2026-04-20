@@ -1,6 +1,6 @@
-use crate::compiler::lexer::Token;
-use crate::compiler::SourceFile;
 use super::lexer::OperatorEnum;
+use crate::compiler::SourceFile;
+use crate::compiler::lexer::Token;
 
 #[derive(Debug, Clone)]
 pub enum GuardNode {
@@ -97,10 +97,11 @@ pub enum AstNode {
     IfPattern {
         branches: Vec<GuardNode>,
         body: Vec<AstNode>,
-        else_body:Option<Vec<AstNode>>,
+        else_body: Option<Vec<AstNode>>,
     },
     Function {
         name: Token,
+        generics: Option<Vec<Token>>,
         ret_type: Token,
         args: Vec<AstNode>,
         block: Vec<AstNode>,

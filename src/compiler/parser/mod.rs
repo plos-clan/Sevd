@@ -3,11 +3,11 @@ mod define;
 mod expr;
 mod fors;
 mod function;
+mod guard;
+mod ifs;
 mod import;
 mod pattern;
 mod whils;
-mod ifs;
-mod guard;
 
 use super::ir::AstNode;
 use super::symtbl::SymbolTable;
@@ -55,15 +55,16 @@ impl<'a> Parser<'a> {
             self.cache = None;
             Ok(token)
         } else {
-            Ok(self.cache.take().unwrap_or_else(|| {
-                match self.tokens.peek().cloned() {
+            Ok(self
+                .cache
+                .take()
+                .unwrap_or_else(|| match self.tokens.peek().cloned() {
                     Some(token) => {
                         self.tokens.next();
                         token
                     }
                     None => Token::no_span_new(TokenType::Eof),
-                }
-            }))
+                }))
         }
     }
 

@@ -1,8 +1,8 @@
 use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::{AstNode, Pattern};
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
-use crate::compiler::parser::pattern::pattern_parser;
 use crate::compiler::parser::Parser;
+use crate::compiler::parser::pattern::pattern_parser;
 
 use super::block::block_parser;
 use super::expr::get_of_else_end_expr;
@@ -37,9 +37,9 @@ fn end_var_parser(
     let expr = get_of_else_end_expr(parser, &last)?;
 
     let else_key = parser.get_token()?;
-    let el_blk: Option<Vec<AstNode>> = if let TokenType::Else = else_key.get_type(){
+    let el_blk: Option<Vec<AstNode>> = if let TokenType::Else = else_key.get_type() {
         Some(block_parser(parser)?)
-    }else {
+    } else {
         parser.cache = Some(else_key);
         None
     };

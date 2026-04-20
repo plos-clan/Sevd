@@ -14,16 +14,16 @@ pub fn for_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
         TokenType::From => {
             parser.cache = Some(token);
             false
-        },
+        }
         TokenType::Operator(OperatorEnum::Colon) => {
             token = parser.get_token()?;
             match token.get_type() {
                 TokenType::Break => true,
                 TokenType::Continue => false,
-                _=> return Err(ParserError::ExpectedToken(token, TokenType::Break)),
+                _ => return Err(ParserError::ExpectedToken(token, TokenType::Break)),
             }
-        },
-        _=> return Err(ParserError::ExpectedToken(token, TokenType::From)),
+        }
+        _ => return Err(ParserError::ExpectedToken(token, TokenType::From)),
     };
 
     token = parser.get_token()?;
@@ -39,6 +39,6 @@ pub fn for_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
         pattern,
         exit,
         iter,
-        blk
+        blk,
     })
 }

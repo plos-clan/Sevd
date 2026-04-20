@@ -2,8 +2,8 @@ use crate::compiler::com_error::ParserError;
 use crate::compiler::com_error::ParserError::{IllegalExpression, IllegalKey};
 use crate::compiler::ir::{AstNode, ExprNode};
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
-use crate::compiler::parser::block::block_parser;
 use crate::compiler::parser::Parser;
+use crate::compiler::parser::block::block_parser;
 
 pub struct ExprParser<'a, 'b> {
     fallback_token: Token,
@@ -125,23 +125,25 @@ impl<'a, 'b> ExprParser<'a, 'b> {
             arguments.push(expr);
             let token = self.get_token()?;
             match token.get_type() {
-                TokenType::Operator(OperatorEnum::Comma) => { continue},
-                TokenType::Lr(')') => { break},
-                _=> return Err(ParserError::Expected(token, ',')),
+                TokenType::Operator(OperatorEnum::Comma) => continue,
+                TokenType::Lr(')') => break,
+                _ => return Err(ParserError::Expected(token, ',')),
             }
         }
         Ok(arguments)
     }
 
     fn check_operator(token: &Token) -> bool {
-        matches!(token.get_type(), TokenType::Operator(_) | TokenType::Lp('[' | '('))
+        matches!(
+            token.get_type(),
+            TokenType::Operator(_) | TokenType::Lp('[' | '(')
+        )
     }
 
     fn expr_bp(&mut self, min_bp: u8) -> Result<ExprNode, ParserError> {
         let token = self.get_token()?;
         let mut expr_tree = self.parse_head(token)?;
         while let Ok(token) = self.get_token() {
-
             if !Self::check_operator(&token) {
                 self.parser.cache = Some(token);
                 break;
@@ -252,10 +254,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
             TokenType::Operator(OperatorEnum::Comma) => {
                 // 后参数提取 (,arg2,arg3)
                 let token_opt = self.get_token().map_err(|_| {
-                    ParserError::ExpectedToken(
-                        self.fallback_token.clone(),
-                        TokenType::Identifier,
-                    )
+                    ParserError::ExpectedToken(self.fallback_token.clone(), TokenType::Identifier)
                 })?;
                 let TokenType::Identifier = token_opt.get_type() else {
                     return Err(ParserError::ExpectedToken(
@@ -273,16 +272,14 @@ impl<'a, 'b> ExprParser<'a, 'b> {
             .get_token()
             .map_err(|_| ParserError::Expected(self.fallback_token.clone(), '|'))?;
         match token.get_type() {
-            TokenType::Operator(OperatorEnum::BitOr) => {
-                Ok(Some((
-                    AstNode::Define {
-                        name,
-                        type_name: None,
-                        vars: None,
-                    },
-                    true,
-                )))
-            }
+            TokenType::Operator(OperatorEnum::BitOr) => Ok(Some((
+                AstNode::Define {
+                    name,
+                    type_name: None,
+                    vars: None,
+                },
+                true,
+            ))),
             TokenType::Operator(OperatorEnum::Comma) => {
                 self.parser.cache = Some(token);
                 Ok(Some((
@@ -295,9 +292,9 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 )))
             }
             TokenType::Operator(OperatorEnum::Colon) => {
-                let type_name = self
-                    .get_token()
-                    .map_err(|_| ParserError::ExpectedToken(token.clone(), TokenType::Identifier))?;
+                let type_name = self.get_token().map_err(|_| {
+                    ParserError::ExpectedToken(token.clone(), TokenType::Identifier)
+                })?;
                 let TokenType::Identifier = type_name.get_type() else {
                     return Err(ParserError::ExpectedToken(token, TokenType::Identifier));
                 };

@@ -1,8 +1,4 @@
 
-function main : i32 {
-    if let Enum::One(a) = a {
 
-    } elif let Enum::Two(b) = b {
-    
-    }
+function<T,K,V> main1(arg1: T, arg2: K) : i32 {
 }

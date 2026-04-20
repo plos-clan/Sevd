@@ -1,15 +1,17 @@
 use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::{AstNode, GuardNode};
 use crate::compiler::lexer::TokenType;
+use crate::compiler::parser::Parser;
 use crate::compiler::parser::block::block_parser;
 use crate::compiler::parser::guard::parse_guard_chain;
-use crate::compiler::parser::Parser;
 
 pub fn while_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
     let token = parser.get_token()?;
     if matches!(token.get_type(), TokenType::Lp('{')) {
         parser.cache = Some(token);
-        return Ok(AstNode::Loop { body: block_parser(parser)? });
+        return Ok(AstNode::Loop {
+            body: block_parser(parser)?,
+        });
     }
 
     parser.cache = Some(token);
@@ -19,9 +21,15 @@ pub fn while_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
     if conditions.len() == 1 {
         return match conditions.into_iter().next().unwrap() {
             GuardNode::Expr(cond) => Ok(AstNode::While { cond, body }),
-            node => Ok(AstNode::WhilePattern { patterns: vec![node], body }),
+            node => Ok(AstNode::WhilePattern {
+                patterns: vec![node],
+                body,
+            }),
         };
     }
 
-    Ok(AstNode::WhilePattern { patterns: conditions, body })
+    Ok(AstNode::WhilePattern {
+        patterns: conditions,
+        body,
+    })
 }

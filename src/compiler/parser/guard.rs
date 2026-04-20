@@ -1,9 +1,9 @@
 use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::GuardNode;
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
+use crate::compiler::parser::Parser;
 use crate::compiler::parser::expr::ExprParser;
 use crate::compiler::parser::pattern::pattern_parser;
-use crate::compiler::parser::Parser;
 
 fn parse_condition_expr(
     parser: &mut Parser,
@@ -22,10 +22,7 @@ fn parse_let_condition(parser: &mut Parser) -> Result<GuardNode, ParserError> {
 
     let mut exprs = ExprParser::new(parser, set_token);
     let vars = exprs.parse()?;
-    Ok(GuardNode::Let {
-        head,
-        vars,
-    })
+    Ok(GuardNode::Let { head, vars })
 }
 
 fn parse_condition_tokens(tokens: Vec<Token>) -> Result<GuardNode, ParserError> {
