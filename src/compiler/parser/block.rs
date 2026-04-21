@@ -64,8 +64,5 @@ pub fn block_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
             nodes.push(node);
         }
     }
-    Ok(AstNode::Block {
-        body: nodes,
-        tail,
-    })
+    Ok(AstNode::Block { body: nodes, tail })
 }

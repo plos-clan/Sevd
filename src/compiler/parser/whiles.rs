@@ -20,7 +20,10 @@ pub fn while_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
 
     if conditions.len() == 1 {
         return match conditions.into_iter().next().unwrap() {
-            GuardNode::Expr(cond) => Ok(AstNode::While { cond: Box::new(cond), body }),
+            GuardNode::Expr(cond) => Ok(AstNode::While {
+                cond: Box::new(cond),
+                body,
+            }),
             node => Ok(AstNode::WhilePattern {
                 patterns: vec![node],
                 body,

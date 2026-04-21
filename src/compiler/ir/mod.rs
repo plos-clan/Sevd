@@ -9,6 +9,11 @@ pub enum GuardNode {
 }
 
 #[derive(Debug, Clone)]
+pub enum TypeNode {
+    Tuple(Vec<Token>),
+}
+
+#[derive(Debug, Clone)]
 pub enum Pattern {
     Wildcard, // _
     Variant {
@@ -30,8 +35,13 @@ pub enum Pattern {
 pub enum ExprNode {
     Literal(Token),
     Identifier(Token),
-    Try(Box<ExprNode>), // ?
+    Try(Box<ExprNode>),    // ?
     Unpack(Box<ExprNode>), // !
+    Tuple(Vec<ExprNode>),
+    Struct {
+        name: Token,
+        fields: Vec<(Token, ExprNode)>,
+    },
     Binary {
         token: Token,
         operator: OperatorEnum,
@@ -47,12 +57,7 @@ pub enum ExprNode {
         // 枚举 / 函数调用
         call: Box<ExprNode>,
         args: Vec<ExprNode>,
-    },
-    Cons {
-        // 三元表达式
-        cons: Box<ExprNode>,
-        left: Box<ExprNode>,
-        right: Box<ExprNode>,
+        generics: Option<Vec<TypeNode>>,
     },
     Closure {
         // 闭包
@@ -102,7 +107,7 @@ pub enum AstNode {
     },
     Block {
         body: Vec<AstNode>,
-        tail: Option<Box<ExprNode>>
+        tail: Option<Box<ExprNode>>,
     },
     Function {
         name: Token,

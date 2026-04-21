@@ -1,5 +1,8 @@
 
 
 function main1(arg1: T, arg2: K) : i32 {
-    !a * b!;
+    let a = (Struct {
+        a: 12 + 3,
+        b: a.b(),
+    },2);
 }

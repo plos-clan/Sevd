@@ -3,9 +3,9 @@ pub mod ir;
 pub mod lexer;
 pub mod module;
 pub mod parser;
+pub mod sematic;
 mod symtbl;
 mod typedef;
-pub mod sematic;
 
 use std::{
     fs,

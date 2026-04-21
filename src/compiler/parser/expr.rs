@@ -68,19 +68,64 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         None
     }
 
+    fn field_parser(&mut self) -> Result<Vec<(Token, ExprNode)>, ParserError> {
+        let mut fields = Vec::new();
+        loop {
+            let mut token = self.get_token()?;
+            if matches!(token.get_type(), TokenType::Lr('}')) {
+                break;
+            }
+            if !matches!(token.get_type(), TokenType::Identifier) {
+                return Err(ParserError::ExpectedToken(token, TokenType::Identifier));
+            }
+            let name = token;
+            token = self.get_token()?;
+            if !matches!(token.get_type(), TokenType::Operator(OperatorEnum::Colon)) {
+                return Err(ParserError::Expected(token, ':'));
+            }
+            let node = self.expr_bp(0)?;
+            fields.push((name, node));
+            token = self.get_token()?;
+            match token.get_type() {
+                TokenType::Operator(OperatorEnum::Comma) => continue,
+                TokenType::Lr('}') => break,
+                _ => return Err(ParserError::Expected(token, '}')),
+            }
+        }
+
+        Ok(fields)
+    }
+
     fn parse_head(&mut self, token: Token) -> Result<ExprNode, ParserError> {
         match token.get_type() {
             TokenType::Lp(c) if c == &'(' => {
+                let next_token = self.get_token()?;
+                if let TokenType::Lr(')') = next_token.get_type() {
+                    return Ok(ExprNode::Tuple(vec![]));
+                }
+                self.parser.cache = Some(next_token);
                 let lhs = self.expr_bp(0)?;
-                let n_token = self
+                let mut n_token = self
                     .get_token()
                     .map_err(|_| ParserError::MissingCondition(token.clone()))?;
-                if let TokenType::Lr(c) = n_token.get_type()
-                    && c == &')'
-                {
-                    Ok(lhs)
-                } else {
-                    Err(ParserError::Expected(token, ')'))
+
+                match n_token.get_type() {
+                    TokenType::Lr(')') => Ok(lhs),
+                    TokenType::Operator(OperatorEnum::Comma) => {
+                        let mut fileds = vec![lhs];
+                        loop {
+                            let filed = self.expr_bp(0)?;
+                            fileds.push(filed);
+                            n_token = self.get_token()?;
+                            match n_token.get_type() {
+                                TokenType::Lr(')') => break,
+                                TokenType::Operator(OperatorEnum::Comma) => continue,
+                                _ => return Err(ParserError::Expected(n_token, ')')),
+                            }
+                        }
+                        Ok(ExprNode::Tuple(fileds))
+                    }
+                    _ => Err(ParserError::Expected(token, ')')),
                 }
             }
             TokenType::Operator(operator) => {
@@ -110,7 +155,19 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 })
             }
             TokenType::If => Ok(if_parser(self.parser)?),
-            TokenType::Identifier => Ok(ExprNode::Identifier(token)),
+            TokenType::Identifier => {
+                let ident = token;
+                let token = self.get_token()?;
+                if let TokenType::Lp('{') = token.get_type() {
+                    let fields = self.field_parser()?;
+                    return Ok(ExprNode::Struct {
+                        name: ident,
+                        fields,
+                    });
+                }
+                self.parser.cache = Some(token);
+                Ok(ExprNode::Identifier(ident))
+            }
             TokenType::String(_)
             | TokenType::Number(_)
             | TokenType::True
@@ -123,9 +180,14 @@ impl<'a, 'b> ExprParser<'a, 'b> {
     fn parser_arguments(&mut self) -> Result<Vec<ExprNode>, ParserError> {
         let mut arguments: Vec<ExprNode> = vec![];
         loop {
+            let mut token = self.get_token()?;
+            if let TokenType::Lr(')') = token.get_type() {
+                break;
+            }
+            self.parser.cache = Some(token);
             let expr = self.expr_bp(0)?;
             arguments.push(expr);
-            let token = self.get_token()?;
+            token = self.get_token()?;
             match token.get_type() {
                 TokenType::Operator(OperatorEnum::Comma) => continue,
                 TokenType::Lr(')') => break,
@@ -181,6 +243,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                                 expr_tree = ExprNode::CallCort {
                                     call: Box::new(expr_tree),
                                     args: self.parser_arguments()?,
+                                    generics: None,
                                 }
                             }
                             '|' => {}
