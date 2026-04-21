@@ -25,7 +25,6 @@ fn parser_argument(parser: &mut Parser) -> Result<Vec<AstNode>, ParserError> {
                 nodes.push(AstNode::Define {
                     name,
                     type_name: Some(token),
-                    vars: None,
                 });
                 continue;
             }
@@ -103,6 +102,6 @@ pub fn function_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
         generics,
         args,
         ret_type,
-        block: block_parser(parser)?,
+        block: Box::new(block_parser(parser)?),
     })
 }

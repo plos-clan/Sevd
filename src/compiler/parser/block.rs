@@ -1,44 +1,71 @@
 use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::AstNode;
 use crate::compiler::lexer::{Token, TokenType};
-use crate::compiler::parser::Parser;
 use crate::compiler::parser::define::var_parser;
-use crate::compiler::parser::expr::get_of_end_expr;
+use crate::compiler::parser::expr::{get_of_end_or_block_end_expr, ExprTerminator};
 use crate::compiler::parser::fors::for_parser;
-use crate::compiler::parser::ifs::if_parser;
 use crate::compiler::parser::whiles::while_parser;
+use crate::compiler::parser::Parser;
 
-fn parse_statement(parser: &mut Parser, token: Token) -> Result<Option<AstNode>, ParserError> {
+fn parse_statement(
+    parser: &mut Parser,
+    token: Token,
+) -> Result<(Option<AstNode>, ExprTerminator), ParserError> {
     match token.get_type() {
-        TokenType::Let => Ok(Some(var_parser(parser)?)),
-        TokenType::For => Ok(Some(for_parser(parser)?)),
-        TokenType::While => Ok(Some(while_parser(parser)?)),
-        TokenType::If => Ok(Some(if_parser(parser)?)),
-        TokenType::End => Ok(None),
+        TokenType::Let => Ok((Some(var_parser(parser)?), ExprTerminator::End)),
+        TokenType::For => Ok((Some(for_parser(parser)?), ExprTerminator::End)),
+        TokenType::While => Ok((Some(while_parser(parser)?), ExprTerminator::End)),
+        TokenType::End => Ok((None, ExprTerminator::End)),
         _ => {
             parser.cache = Some(token.clone());
-            Ok(Some(AstNode::Expr(get_of_end_expr(parser, &token)?)))
+            let (expr, term) = get_of_end_or_block_end_expr(parser, &token)?;
+            Ok((Some(AstNode::Expr(Box::new(expr))), term))
         }
     }
 }
 
-pub fn block_parser(parser: &mut Parser) -> Result<Vec<AstNode>, ParserError> {
+pub fn block_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
     let mut nodes: Vec<AstNode> = vec![];
     let mut token = parser.get_token()?;
     let TokenType::Lp('{') = token.get_type() else {
-        if let Some(stmt) = parse_statement(parser, token.clone())? {
+        let (stmt, terminator) = parse_statement(parser, token)?;
+        if matches!(terminator, ExprTerminator::BlockEnd) {
+            let AstNode::Expr(expr) = stmt.unwrap() else {
+                unreachable!()
+            };
+            return Ok(AstNode::Block {
+                body: nodes,
+                tail: Some(expr.clone()),
+            });
+        }
+        if let Some(stmt) = stmt {
             nodes.push(stmt);
         }
-        return Ok(nodes);
+        return Ok(AstNode::Block {
+            body: nodes,
+            tail: None,
+        });
     };
+    let mut tail = None;
     loop {
         token = parser.get_token()?;
         if let TokenType::Lr('}') = token.get_type() {
             break;
         }
-        if let Some(node) = parse_statement(parser, token)? {
+        let (stmt, terminator) = parse_statement(parser, token)?;
+        if matches!(terminator, ExprTerminator::BlockEnd) {
+            let AstNode::Expr(expr) = stmt.unwrap() else {
+                unreachable!()
+            };
+            tail = Some(expr.clone());
+            break;
+        }
+        if let Some(node) = stmt {
             nodes.push(node);
         }
     }
-    Ok(nodes)
+    Ok(AstNode::Block {
+        body: nodes,
+        tail,
+    })
 }

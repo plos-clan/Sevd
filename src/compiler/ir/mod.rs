@@ -1,6 +1,6 @@
 use super::lexer::OperatorEnum;
-use crate::compiler::SourceFile;
 use crate::compiler::lexer::Token;
+use crate::compiler::SourceFile;
 
 #[derive(Debug, Clone)]
 pub enum GuardNode {
@@ -30,6 +30,8 @@ pub enum Pattern {
 pub enum ExprNode {
     Literal(Token),
     Identifier(Token),
+    Try(Box<ExprNode>), // ?
+    Unpack(Box<ExprNode>), // !
     Binary {
         token: Token,
         operator: OperatorEnum,
@@ -56,7 +58,12 @@ pub enum ExprNode {
         // 闭包
         args: Vec<AstNode>,
         ret: Token,
-        blk: Vec<AstNode>,
+        blk: AstNode,
+    },
+    IfPattern {
+        branches: Vec<GuardNode>,
+        body: AstNode,
+        else_body: Option<AstNode>,
     },
 }
 
@@ -69,44 +76,42 @@ pub enum AstNode {
     Define {
         name: Token,
         type_name: Option<Token>,
-        vars: Option<ExprNode>,
     },
     DefineElse {
         head: Pattern,
         type_name: Option<Token>,
-        vars: Option<ExprNode>,
-        el_blk: Option<Vec<AstNode>>,
+        vars: Option<Box<ExprNode>>,
+        el_blk: Option<Box<AstNode>>,
     },
     ForPattern {
         pattern: Pattern,
         exit: bool, // exit ? break : continue
-        iter: ExprNode,
-        blk: Vec<AstNode>,
+        iter: Box<ExprNode>,
+        blk: Box<AstNode>,
     },
     WhilePattern {
         patterns: Vec<GuardNode>,
-        body: Vec<AstNode>,
+        body: Box<AstNode>,
     },
     While {
-        cond: ExprNode,
-        body: Vec<AstNode>,
+        cond: Box<ExprNode>,
+        body: Box<AstNode>,
     },
     Loop {
-        body: Vec<AstNode>,
+        body: Box<AstNode>,
     },
-    IfPattern {
-        branches: Vec<GuardNode>,
+    Block {
         body: Vec<AstNode>,
-        else_body: Option<Vec<AstNode>>,
+        tail: Option<Box<ExprNode>>
     },
     Function {
         name: Token,
         generics: Option<Vec<Token>>,
         ret_type: Token,
         args: Vec<AstNode>,
-        block: Vec<AstNode>,
+        block: Box<AstNode>,
     },
-    Expr(ExprNode),
+    Expr(Box<ExprNode>),
     EnumDefine {
         name: Token,
         variants: Vec<(Token, Vec<Token>)>,

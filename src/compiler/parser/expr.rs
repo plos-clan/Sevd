@@ -2,8 +2,9 @@ use crate::compiler::com_error::ParserError;
 use crate::compiler::com_error::ParserError::{IllegalExpression, IllegalKey};
 use crate::compiler::ir::{AstNode, ExprNode};
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
-use crate::compiler::parser::Parser;
 use crate::compiler::parser::block::block_parser;
+use crate::compiler::parser::ifs::if_parser;
+use crate::compiler::parser::Parser;
 
 pub struct ExprParser<'a, 'b> {
     fallback_token: Token,
@@ -33,6 +34,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
     fn postfix_binding_power(token: &Token) -> Option<(u8, ())> {
         match token.get_type() {
             TokenType::Operator(OperatorEnum::Plus | OperatorEnum::Minus) => Some((21, ())),
+            TokenType::Operator(OperatorEnum::Question | OperatorEnum::Not) => Some((26, ())),
             TokenType::Lp('[' | '(') => Some((27, ())),
             _ => None,
         }
@@ -47,7 +49,6 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 | OperatorEnum::MulSet
                 | OperatorEnum::DivSet
                 | OperatorEnum::ModSet => Some((2, 1)),
-                OperatorEnum::Question => Some((4, 3)),
                 OperatorEnum::And | OperatorEnum::Or => Some((5, 6)),
                 OperatorEnum::BitOr => Some((7, 8)),
                 OperatorEnum::BitXor => Some((9, 10)),
@@ -108,6 +109,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                     child: Box::new(child),
                 })
             }
+            TokenType::If => Ok(if_parser(self.parser)?),
             TokenType::Identifier => Ok(ExprNode::Identifier(token)),
             TokenType::String(_)
             | TokenType::Number(_)
@@ -155,44 +157,54 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                     break;
                 }
 
-                if let TokenType::Lp(c) = token.get_type() {
-                    match c {
-                        '[' => {
-                            // 用于解析数组获取值, 如: array[index]
-                            let rhs = self.expr_bp(0)?;
-                            let tk = self
-                                .get_token()
-                                .map_err(|_| ParserError::MissingCondition(token.clone()))?;
-                            let TokenType::Lr(']') = tk.get_type() else {
-                                return Err(ParserError::Expected(token, ']'));
-                            };
-                            expr_tree = ExprNode::Binary {
-                                token,
-                                operator: OperatorEnum::Array,
-                                left: Box::new(expr_tree),
-                                right: Box::new(rhs),
-                            };
+                match token.get_type() {
+                    TokenType::Lp(c) => {
+                        match c {
+                            '[' => {
+                                // 用于解析数组获取值, 如: array[index]
+                                let rhs = self.expr_bp(0)?;
+                                let tk = self
+                                    .get_token()
+                                    .map_err(|_| ParserError::MissingCondition(token.clone()))?;
+                                let TokenType::Lr(']') = tk.get_type() else {
+                                    return Err(ParserError::Expected(token, ']'));
+                                };
+                                expr_tree = ExprNode::Binary {
+                                    token,
+                                    operator: OperatorEnum::Array,
+                                    left: Box::new(expr_tree),
+                                    right: Box::new(rhs),
+                                };
+                            }
+                            '(' => {
+                                // 用于解析函数调用, 如: call_test(args)
+                                expr_tree = ExprNode::CallCort {
+                                    call: Box::new(expr_tree),
+                                    args: self.parser_arguments()?,
+                                }
+                            }
+                            '|' => {}
+                            _ => return Err(ParserError::Expected(token, '(')),
                         }
-                        '(' => {
-                            // 用于解析函数调用, 如: call_test(args)
-                            expr_tree = ExprNode::CallCort {
-                                call: Box::new(expr_tree),
-                                args: self.parser_arguments()?,
+                    }
+                    TokenType::Operator(OperatorEnum::Question) => {
+                        expr_tree = ExprNode::Try(Box::new(expr_tree))
+                    }
+
+                    TokenType::Operator(OperatorEnum::Not) => {
+                        expr_tree = ExprNode::Unpack(Box::new(expr_tree))
+                    }
+
+                    TokenType::Operator(operator)
+                    if !matches!(operator, OperatorEnum::Plus | OperatorEnum::Minus) =>
+                        {
+                            expr_tree = ExprNode::Unary {
+                                token: token.clone(),
+                                operator: *operator,
+                                child: Box::new(expr_tree),
                             }
                         }
-                        '|' => {}
-                        _ => return Err(ParserError::Expected(token, '(')),
-                    }
-                } else if let TokenType::Operator(operator) = token.get_type()
-                    && !matches!(operator, OperatorEnum::Plus | OperatorEnum::Minus)
-                {
-                    expr_tree = ExprNode::Unary {
-                        token: token.clone(),
-                        operator: *operator,
-                        child: Box::new(expr_tree),
-                    }
-                } else {
-                    return Err(IllegalExpression(token));
+                    _ => return Err(IllegalExpression(token)),
                 }
                 continue;
             }
@@ -201,24 +213,6 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 if l_bp < min_bp {
                     self.parser.cache = Some(token);
                     break;
-                }
-                // 三元表达式解析
-                if let TokenType::Operator(OperatorEnum::Question) = token.get_type() {
-                    let mhs = self.expr_bp(0)?;
-                    let colon = self
-                        .get_token()
-                        .map_err(|_| ParserError::Expected(token.clone(), ':'))?;
-                    if let TokenType::Operator(OperatorEnum::Colon) = colon.get_type() {
-                        let rhs = self.expr_bp(r_bp)?;
-                        expr_tree = ExprNode::Cons {
-                            cons: Box::new(expr_tree),
-                            left: Box::new(mhs),
-                            right: Box::new(rhs),
-                        };
-                        continue;
-                    }
-                    self.parser.cache = Some(colon);
-                    return Err(ParserError::Expected(token, ':'));
                 }
 
                 // 二元表达式解析
@@ -276,7 +270,6 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 AstNode::Define {
                     name,
                     type_name: None,
-                    vars: None,
                 },
                 true,
             ))),
@@ -286,7 +279,6 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                     AstNode::Define {
                         name,
                         type_name: None,
-                        vars: None,
                     },
                     false,
                 )))
@@ -303,7 +295,6 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                     AstNode::Define {
                         name,
                         type_name: Some(type_name),
-                        vars: None,
                     },
                     false,
                 )))
@@ -420,9 +411,18 @@ pub fn get_of_else_end_expr(parser: &mut Parser, last: &Token) -> Result<ExprNod
     exprs.parse()
 }
 
-pub fn get_of_end_expr(parser: &mut Parser, last: &Token) -> Result<ExprNode, ParserError> {
+pub enum ExprTerminator {
+    End,      // ;
+    BlockEnd, // }
+}
+
+pub fn get_of_end_or_block_end_expr(
+    parser: &mut Parser,
+    last: &Token,
+) -> Result<(ExprNode, ExprTerminator), ParserError> {
     let mut tokens: Vec<Token> = vec![];
     let mut p_count: usize = 0;
+    let mut terminator = ExprTerminator::End;
     loop {
         let token = parser.get_token()?;
         match token.get_type() {
@@ -431,9 +431,17 @@ pub fn get_of_end_expr(parser: &mut Parser, last: &Token) -> Result<ExprNode, Pa
                 p_count += 1;
                 tokens.push(token);
             }
-            TokenType::Lr('}' | ')' | ']') => {
+            TokenType::Lr(')' | ']') => {
                 if p_count == 0 {
                     return Err(IllegalExpression(token));
+                }
+                p_count -= 1;
+                tokens.push(token);
+            }
+            TokenType::Lr('}') => {
+                if p_count == 0 {
+                    terminator = ExprTerminator::BlockEnd;
+                    break;
                 }
                 p_count -= 1;
                 tokens.push(token);
@@ -443,5 +451,5 @@ pub fn get_of_end_expr(parser: &mut Parser, last: &Token) -> Result<ExprNode, Pa
     }
     let mut parser = Parser::new_collect(tokens);
     let mut exprs = ExprParser::new(&mut parser, last.clone());
-    exprs.parse()
+    Ok((exprs.parse()?, terminator))
 }

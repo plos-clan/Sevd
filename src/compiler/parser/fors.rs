@@ -32,8 +32,8 @@ pub fn for_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
     };
 
     let mut expr_parser = ExprParser::new(parser, token);
-    let iter = expr_parser.parse()?;
-    let blk = block_parser(parser)?;
+    let iter = Box::new(expr_parser.parse()?);
+    let blk = Box::new(block_parser(parser)?);
 
     Ok(AstNode::ForPattern {
         pattern,
