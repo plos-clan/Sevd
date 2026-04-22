@@ -20,7 +20,11 @@ pub struct ExprParser<'a, 'b> {
 }
 
 impl<'a, 'b> ExprParser<'a, 'b> {
-    pub fn new(parser: &'a mut Parser<'b>, fallback_token: Token, types: ExprType) -> ExprParser<'a, 'b> {
+    pub fn new(
+        parser: &'a mut Parser<'b>,
+        fallback_token: Token,
+        types: ExprType,
+    ) -> ExprParser<'a, 'b> {
         Self {
             fallback_token,
             parser,
@@ -121,19 +125,13 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         };
 
         if depth == 0 && self.types == ExprType::Cond {
-            return Ok(ExprNode::Identifier {
-                ident,
-                generics,
-            });
+            return Ok(ExprNode::Identifier { ident, generics });
         }
         token = self.get_token()?;
 
         let TokenType::Lp('{') = token.get_type() else {
             self.parser.cache = Some(token);
-            return Ok(ExprNode::Identifier {
-                ident,
-                generics,
-            });
+            return Ok(ExprNode::Identifier { ident, generics });
         };
 
         let fields = self.field_parser(depth)?;
@@ -141,7 +139,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         Ok(ExprNode::Struct {
             name: ident,
             fields,
-            generics
+            generics,
         })
     }
 
@@ -481,7 +479,11 @@ impl<'a, 'b> ExprParser<'a, 'b> {
     }
 }
 
-pub fn get_of_else_end_expr(parser: &mut Parser, last: &Token, types: ExprType) -> Result<ExprNode, ParserError> {
+pub fn get_of_else_end_expr(
+    parser: &mut Parser,
+    last: &Token,
+    types: ExprType,
+) -> Result<ExprNode, ParserError> {
     let mut tokens: Vec<Token> = vec![];
     let mut p_count: usize = 0;
     loop {

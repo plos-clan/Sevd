@@ -1,7 +1,7 @@
-use crate::compiler::SourceFile;
 use crate::compiler::com_error::LexError;
 use crate::compiler::lexer::TokenType::Operator;
 use crate::compiler::typedef::TokenNumber;
+use crate::compiler::SourceFile;
 use line_column::span::{Span, TextRange, TextSize};
 use std::fmt::Formatter;
 use std::string::ToString;
@@ -85,6 +85,7 @@ pub enum TokenType {
     Operator(OperatorEnum),
     String(String),
     End,
+    At,
     Lp(char),
     Lr(char),
 
@@ -119,6 +120,7 @@ impl Display for TokenType {
             Operator(operator_enum) => f.write_fmt(format_args!("operator {:?}", operator_enum)),
             TokenType::String(need) => f.write_fmt(format_args!("\"{need}\"")),
             TokenType::End => f.write_str(";"),
+            TokenType::At => f.write_str("@"),
             TokenType::Lp(c) | TokenType::Lr(c) => f.write_fmt(format_args!("{c}")),
             TokenType::For => f.write_str("for"),
             TokenType::If => f.write_str("if"),
@@ -585,12 +587,16 @@ impl<'a> LexerAnalysis<'a> {
 
         match start {
             '\0' => Ok(Token {
-                span: self.make_span(start_pos, start_pos),
+                span: self.make_span(start_pos, self.pos),
                 t_type: TokenType::Eof,
             }),
             ';' => Ok(Token {
-                span: self.make_span(start_pos, start_pos),
+                span: self.make_span(start_pos, self.pos),
                 t_type: TokenType::End,
+            }),
+            '@' => Ok(Token {
+                span: self.make_span(start_pos, self.pos),
+                t_type: TokenType::At,
             }),
             '"' => self.build_string(start_pos),
             ch if ch.is_alphabetic() || ch == '_' => {

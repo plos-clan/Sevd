@@ -3,6 +3,19 @@ use crate::compiler::lexer::Token;
 use crate::compiler::SourceFile;
 
 #[derive(Debug, Clone)]
+pub enum MetaValue {
+    Identifier(Token),
+    Literal(Token),
+    List(Vec<AnnotationElement>),
+}
+
+#[derive(Debug, Clone)]
+pub enum AnnotationElement {
+    Positional(Token),
+    Arg { key: Token, value: MetaValue },
+}
+
+#[derive(Debug, Clone)]
 pub enum GuardNode {
     Expr(ExprNode),
     Let { head: Pattern, vars: ExprNode },
@@ -86,6 +99,10 @@ pub enum AstNode {
     Import {
         name: Token,
         file: Box<SourceFile>,
+    },
+    Annotation {
+        name: Token,
+        elements: Vec<AnnotationElement>,
     },
     Define {
         name: Token,

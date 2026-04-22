@@ -45,10 +45,7 @@ pub fn parser_generics_use(parser: &mut Parser) -> Result<GenericArg, ParserErro
                 _ => return Err(ParserError::Expected(token, '>')),
             }
         }
-        Ok(GenericArg::Named {
-            name,
-            generics,
-        })
+        Ok(GenericArg::Named { name, generics })
     } else {
         parser.cache = Some(token);
         Ok(GenericArg::Ident(name))
