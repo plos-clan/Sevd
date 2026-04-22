@@ -1,12 +1,12 @@
 use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::{AstNode, Pattern};
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
-use crate::compiler::parser::function::parser_generics;
+use crate::compiler::parser::generics::parser_generics;
 use crate::compiler::parser::pattern::pattern_parser;
 use crate::compiler::parser::Parser;
 
 use super::block::block_parser;
-use super::expr::get_of_else_end_expr;
+use super::expr::{get_of_else_end_expr, ExprType};
 
 fn end_var_parser(
     parser: &mut Parser,
@@ -35,7 +35,7 @@ fn end_var_parser(
     } else {
         None
     };
-    let expr = get_of_else_end_expr(parser, &last)?;
+    let expr = get_of_else_end_expr(parser, &last, ExprType::Init)?;
 
     let else_key = parser.get_token()?;
     let el_blk: Option<Box<AstNode>> = if let TokenType::Else = else_key.get_type() {

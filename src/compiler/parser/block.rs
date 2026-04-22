@@ -2,7 +2,7 @@ use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::AstNode;
 use crate::compiler::lexer::{Token, TokenType};
 use crate::compiler::parser::define::var_parser;
-use crate::compiler::parser::expr::{get_of_end_or_block_end_expr, ExprTerminator};
+use crate::compiler::parser::expr::{get_of_end_or_block_end_expr, ExprTerminator, ExprType};
 use crate::compiler::parser::fors::for_parser;
 use crate::compiler::parser::whiles::while_parser;
 use crate::compiler::parser::Parser;
@@ -18,7 +18,7 @@ fn parse_statement(
         TokenType::End => Ok((None, ExprTerminator::End)),
         _ => {
             parser.cache = Some(token.clone());
-            let (expr, term) = get_of_end_or_block_end_expr(parser, &token)?;
+            let (expr, term) = get_of_end_or_block_end_expr(parser, &token, ExprType::Init)?;
             Ok((Some(AstNode::Expr(Box::new(expr))), term))
         }
     }

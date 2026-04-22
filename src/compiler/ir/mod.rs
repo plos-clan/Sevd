@@ -9,8 +9,13 @@ pub enum GuardNode {
 }
 
 #[derive(Debug, Clone)]
-pub enum TypeNode {
+pub enum GenericArg {
     Tuple(Vec<Token>),
+    Named {
+        name: Token,
+        generics: Vec<GenericArg>,
+    },
+    Ident(Token),
 }
 
 #[derive(Debug, Clone)]
@@ -57,7 +62,7 @@ pub enum ExprNode {
         // 枚举 / 函数调用
         call: Box<ExprNode>,
         args: Vec<ExprNode>,
-        generics: Option<Vec<TypeNode>>,
+        generics: Option<Vec<GenericArg>>,
     },
     Closure {
         // 闭包
@@ -112,7 +117,7 @@ pub enum AstNode {
     Function {
         name: Token,
         generics: Option<Vec<Token>>,
-        ret_type: Token,
+        ret_type: GenericArg,
         args: Vec<AstNode>,
         block: Box<AstNode>,
     },

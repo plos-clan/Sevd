@@ -8,6 +8,7 @@ mod ifs;
 mod import;
 mod pattern;
 mod whiles;
+mod generics;
 
 use super::ir::AstNode;
 use super::symtbl::SymbolTable;

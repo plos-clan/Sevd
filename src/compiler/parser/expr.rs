@@ -6,16 +6,24 @@ use crate::compiler::parser::block::block_parser;
 use crate::compiler::parser::ifs::if_parser;
 use crate::compiler::parser::Parser;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub enum ExprType {
+    Cond,
+    Init,
+}
+
 pub struct ExprParser<'a, 'b> {
     fallback_token: Token,
     parser: &'a mut Parser<'b>,
+    types: ExprType,
 }
 
 impl<'a, 'b> ExprParser<'a, 'b> {
-    pub fn new(parser: &'a mut Parser<'b>, fallback_token: Token) -> ExprParser<'a, 'b> {
+    pub fn new(parser: &'a mut Parser<'b>, fallback_token: Token, types: ExprType) -> ExprParser<'a, 'b> {
         Self {
             fallback_token,
             parser,
+            types,
         }
     }
 
@@ -35,7 +43,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         match token.get_type() {
             TokenType::Operator(OperatorEnum::Plus | OperatorEnum::Minus) => Some((21, ())),
             TokenType::Operator(OperatorEnum::Question | OperatorEnum::Not) => Some((26, ())),
-            TokenType::Lp('[' | '(') => Some((27, ())),
+            TokenType::Lp('[' | '(' | '{') => Some((27, ())),
             _ => None,
         }
     }
@@ -68,7 +76,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         None
     }
 
-    fn field_parser(&mut self) -> Result<Vec<(Token, ExprNode)>, ParserError> {
+    fn field_parser(&mut self, depth: usize) -> Result<Vec<(Token, ExprNode)>, ParserError> {
         let mut fields = Vec::new();
         loop {
             let mut token = self.get_token()?;
@@ -83,7 +91,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
             if !matches!(token.get_type(), TokenType::Operator(OperatorEnum::Colon)) {
                 return Err(ParserError::Expected(token, ':'));
             }
-            let node = self.expr_bp(0)?;
+            let node = self.expr_bp(0, depth + 1)?;
             fields.push((name, node));
             token = self.get_token()?;
             match token.get_type() {
@@ -96,7 +104,25 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         Ok(fields)
     }
 
-    fn parse_head(&mut self, token: Token) -> Result<ExprNode, ParserError> {
+    fn parse_ident(&mut self, ident: Token, depth: usize) -> Result<ExprNode, ParserError> {
+        if depth == 0 && self.types == ExprType::Cond {
+            return Ok(ExprNode::Identifier(ident));
+        }
+        let token = self.get_token()?;
+        let TokenType::Lp('{') = token.get_type() else {
+            self.parser.cache = Some(token);
+            return Ok(ExprNode::Identifier(ident));
+        };
+
+        let fields = self.field_parser(depth)?;
+
+        Ok(ExprNode::Struct {
+            name: ident,
+            fields,
+        })
+    }
+
+    fn parse_head(&mut self, token: Token, depth: usize) -> Result<ExprNode, ParserError> {
         match token.get_type() {
             TokenType::Lp(c) if c == &'(' => {
                 let next_token = self.get_token()?;
@@ -104,7 +130,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                     return Ok(ExprNode::Tuple(vec![]));
                 }
                 self.parser.cache = Some(next_token);
-                let lhs = self.expr_bp(0)?;
+                let lhs = self.expr_bp(0, depth + 1)?;
                 let mut n_token = self
                     .get_token()
                     .map_err(|_| ParserError::MissingCondition(token.clone()))?;
@@ -114,7 +140,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                     TokenType::Operator(OperatorEnum::Comma) => {
                         let mut fileds = vec![lhs];
                         loop {
-                            let filed = self.expr_bp(0)?;
+                            let filed = self.expr_bp(0, depth + 1)?;
                             fileds.push(filed);
                             n_token = self.get_token()?;
                             match n_token.get_type() {
@@ -147,7 +173,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                     return Err(IllegalExpression(token));
                 }
                 self.fallback_token = token.clone();
-                let child = self.expr_bp(r_bp)?;
+                let child = self.expr_bp(r_bp, depth + 1)?;
                 Ok(ExprNode::Unary {
                     token: token.clone(),
                     operator: *operator,
@@ -155,19 +181,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 })
             }
             TokenType::If => Ok(if_parser(self.parser)?),
-            TokenType::Identifier => {
-                let ident = token;
-                let token = self.get_token()?;
-                if let TokenType::Lp('{') = token.get_type() {
-                    let fields = self.field_parser()?;
-                    return Ok(ExprNode::Struct {
-                        name: ident,
-                        fields,
-                    });
-                }
-                self.parser.cache = Some(token);
-                Ok(ExprNode::Identifier(ident))
-            }
+            TokenType::Identifier => self.parse_ident(token, depth),
             TokenType::String(_)
             | TokenType::Number(_)
             | TokenType::True
@@ -177,7 +191,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         }
     }
 
-    fn parser_arguments(&mut self) -> Result<Vec<ExprNode>, ParserError> {
+    fn parser_arguments(&mut self, depth: usize) -> Result<Vec<ExprNode>, ParserError> {
         let mut arguments: Vec<ExprNode> = vec![];
         loop {
             let mut token = self.get_token()?;
@@ -185,7 +199,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 break;
             }
             self.parser.cache = Some(token);
-            let expr = self.expr_bp(0)?;
+            let expr = self.expr_bp(0, depth + 1)?;
             arguments.push(expr);
             token = self.get_token()?;
             match token.get_type() {
@@ -204,9 +218,9 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         )
     }
 
-    fn expr_bp(&mut self, min_bp: u8) -> Result<ExprNode, ParserError> {
+    fn expr_bp(&mut self, min_bp: u8, depth: usize) -> Result<ExprNode, ParserError> {
         let token = self.get_token()?;
-        let mut expr_tree = self.parse_head(token)?;
+        let mut expr_tree = self.parse_head(token, depth)?;
         while let Ok(token) = self.get_token() {
             if !Self::check_operator(&token) {
                 self.parser.cache = Some(token);
@@ -224,7 +238,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                         match c {
                             '[' => {
                                 // 用于解析数组获取值, 如: array[index]
-                                let rhs = self.expr_bp(0)?;
+                                let rhs = self.expr_bp(0, depth + 1)?;
                                 let tk = self
                                     .get_token()
                                     .map_err(|_| ParserError::MissingCondition(token.clone()))?;
@@ -242,7 +256,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                                 // 用于解析函数调用, 如: call_test(args)
                                 expr_tree = ExprNode::CallCort {
                                     call: Box::new(expr_tree),
-                                    args: self.parser_arguments()?,
+                                    args: self.parser_arguments(depth)?,
                                     generics: None,
                                 }
                             }
@@ -279,7 +293,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 }
 
                 // 二元表达式解析
-                let rhs = self.expr_bp(r_bp)?;
+                let rhs = self.expr_bp(r_bp, depth)?;
                 if let TokenType::Operator(operator) = token.get_type() {
                     expr_tree = ExprNode::Binary {
                         token: token.clone(),
@@ -440,11 +454,11 @@ impl<'a, 'b> ExprParser<'a, 'b> {
     }
 
     pub fn parse(&mut self) -> Result<ExprNode, ParserError> {
-        self.expr_bp(0)
+        self.expr_bp(0, 0)
     }
 }
 
-pub fn get_of_else_end_expr(parser: &mut Parser, last: &Token) -> Result<ExprNode, ParserError> {
+pub fn get_of_else_end_expr(parser: &mut Parser, last: &Token, types: ExprType) -> Result<ExprNode, ParserError> {
     let mut tokens: Vec<Token> = vec![];
     let mut p_count: usize = 0;
     loop {
@@ -470,7 +484,7 @@ pub fn get_of_else_end_expr(parser: &mut Parser, last: &Token) -> Result<ExprNod
         }
     }
     let mut parser = Parser::new_collect(tokens);
-    let mut exprs = ExprParser::new(&mut parser, last.clone());
+    let mut exprs = ExprParser::new(&mut parser, last.clone(), types);
     exprs.parse()
 }
 
@@ -482,6 +496,7 @@ pub enum ExprTerminator {
 pub fn get_of_end_or_block_end_expr(
     parser: &mut Parser,
     last: &Token,
+    types: ExprType,
 ) -> Result<(ExprNode, ExprTerminator), ParserError> {
     let mut tokens: Vec<Token> = vec![];
     let mut p_count: usize = 0;
@@ -509,10 +524,11 @@ pub fn get_of_end_or_block_end_expr(
                 p_count -= 1;
                 tokens.push(token);
             }
+            TokenType::Eof => return Err(IllegalExpression(token)),
             _ => tokens.push(token),
         }
     }
     let mut parser = Parser::new_collect(tokens);
-    let mut exprs = ExprParser::new(&mut parser, last.clone());
+    let mut exprs = ExprParser::new(&mut parser, last.clone(), types);
     Ok((exprs.parse()?, terminator))
 }

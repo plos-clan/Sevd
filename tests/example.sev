@@ -1,8 +1,14 @@
 
 
-function main1(arg1: T, arg2: K) : i32 {
+function main1(arg1: T, arg2: K) : Result<i32, Error> {
     let a = (Struct {
         a: 12 + 3,
         b: a.b(),
     },2);
+
+    while let Enum::One(a) = (Struct {
+        a: 3 + 3-4
+    }) {
+
+    }
 }
