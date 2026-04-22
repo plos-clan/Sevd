@@ -39,13 +39,17 @@ pub enum Pattern {
 #[derive(Debug, Clone)]
 pub enum ExprNode {
     Literal(Token),
-    Identifier(Token),
+    Identifier {
+        ident: Token,
+        generics: Option<GenericArg>,
+    },
     Try(Box<ExprNode>),    // ?
     Unpack(Box<ExprNode>), // !
     Tuple(Vec<ExprNode>),
     Struct {
         name: Token,
         fields: Vec<(Token, ExprNode)>,
+        generics: Option<GenericArg>,
     },
     Binary {
         token: Token,

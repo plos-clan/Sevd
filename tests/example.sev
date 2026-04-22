@@ -6,9 +6,11 @@ function main1(arg1: T, arg2: K) : Result<i32, Error> {
         b: a.b(),
     },2);
 
-    while let Enum::One(a) = (Struct {
+    while let Enum::One(a) = (Struct<i32> {
         a: 3 + 3-4
     }) {
 
     }
+
+    let b_func = a.func<i32>();
 }

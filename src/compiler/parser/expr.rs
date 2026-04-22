@@ -3,6 +3,7 @@ use crate::compiler::com_error::ParserError::{IllegalExpression, IllegalKey};
 use crate::compiler::ir::{AstNode, ExprNode};
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
 use crate::compiler::parser::block::block_parser;
+use crate::compiler::parser::generics::parser_generics_use;
 use crate::compiler::parser::ifs::if_parser;
 use crate::compiler::parser::Parser;
 
@@ -105,13 +106,34 @@ impl<'a, 'b> ExprParser<'a, 'b> {
     }
 
     fn parse_ident(&mut self, ident: Token, depth: usize) -> Result<ExprNode, ParserError> {
+        let mut token = self.get_token()?;
+
+        let generics = if let TokenType::Operator(OperatorEnum::Less) = token.get_type() {
+            let ga = parser_generics_use(self.parser)?;
+            token = self.get_token()?;
+            let TokenType::Operator(OperatorEnum::Big) = token.get_type() else {
+                return Err(ParserError::Expected(token, '>'));
+            };
+            Some(ga)
+        } else {
+            self.parser.cache = Some(token);
+            None
+        };
+
         if depth == 0 && self.types == ExprType::Cond {
-            return Ok(ExprNode::Identifier(ident));
+            return Ok(ExprNode::Identifier {
+                ident,
+                generics,
+            });
         }
-        let token = self.get_token()?;
+        token = self.get_token()?;
+
         let TokenType::Lp('{') = token.get_type() else {
             self.parser.cache = Some(token);
-            return Ok(ExprNode::Identifier(ident));
+            return Ok(ExprNode::Identifier {
+                ident,
+                generics,
+            });
         };
 
         let fields = self.field_parser(depth)?;
@@ -119,6 +141,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         Ok(ExprNode::Struct {
             name: ident,
             fields,
+            generics
         })
     }
 
