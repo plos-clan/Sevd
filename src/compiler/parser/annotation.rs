@@ -7,6 +7,7 @@ fn parse_meta_value(token: Token) -> Result<MetaValue, ParserError> {
     match token.get_type() {
         TokenType::Identifier => Ok(MetaValue::Identifier(token)),
         TokenType::String(_)
+        | TokenType::Char(_)
         | TokenType::Number(_)
         | TokenType::True
         | TokenType::False
@@ -44,6 +45,7 @@ fn element_parser(parser: &mut Parser) -> Result<Vec<AnnotationElement>, ParserE
                 }
             }
             TokenType::String(_)
+            | TokenType::Char(_)
             | TokenType::Number(_)
             | TokenType::True
             | TokenType::False

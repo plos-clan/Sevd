@@ -204,6 +204,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
             TokenType::If => Ok(if_parser(self.parser)?),
             TokenType::Identifier => self.parse_ident(token, depth),
             TokenType::String(_)
+            | TokenType::Char(_)
             | TokenType::Number(_)
             | TokenType::True
             | TokenType::False

@@ -84,6 +84,7 @@ pub enum TokenType {
     Number(TokenNumber),
     Operator(OperatorEnum),
     String(String),
+    Char(char),
     End,
     At,
     Lp(char),
@@ -119,6 +120,7 @@ impl Display for TokenType {
             }
             Operator(operator_enum) => f.write_fmt(format_args!("operator {:?}", operator_enum)),
             TokenType::String(need) => f.write_fmt(format_args!("\"{need}\"")),
+            TokenType::Char(char) => f.write_fmt(format_args!("'{:?}'", char)),
             TokenType::End => f.write_str(";"),
             TokenType::At => f.write_str("@"),
             TokenType::Lp(c) | TokenType::Lr(c) => f.write_fmt(format_args!("{c}")),
@@ -576,6 +578,47 @@ impl<'a> LexerAnalysis<'a> {
         }
     }
 
+    fn build_char(&mut self, start: TextSize) -> Result<Token, LexError> {
+        let mut c = self.next_char();
+        let out_c = match c {
+            '\\' => {
+                c = self.next_char();
+                match c {
+                    '"' => '"',
+                    'n' => '\n',
+                    'r' => '\r',
+                    't' => '\t',
+                    '\\' => '\\',
+                    '\'' => '\'',
+                    c => {
+                        return Err(LexError::InvalidToken(
+                            format!("Illegal escape char: {c}"),
+                            Token {
+                                span: self.make_span(start, self.pos),
+                                t_type: TokenType::Char(c),
+                            },
+                        ));
+                    }
+                }
+            },
+            c => c,
+        };
+        c = self.next_char();
+        if c != '\'' {
+            return Err(LexError::InvalidToken(
+                "Expected '".to_string(),
+                Token {
+                    span: self.make_span(start, self.pos),
+                    t_type: TokenType::Char(c),
+                },
+            ));
+        }
+        Ok(Token {
+            span: self.make_span(start, self.pos),
+            t_type: TokenType::Char(out_c),
+        })
+    }
+
     pub fn get_token(&mut self) -> Result<Token, LexError> {
         let (start_pos, start) = loop {
             let start_pos = self.pos;
@@ -673,6 +716,7 @@ impl<'a> LexerAnalysis<'a> {
                 OperatorEnum::BitLeft,
                 OperatorEnum::Less,
             ),
+            '\'' => self.build_char(start_pos),
             '^' => self.build_two(start_pos, OperatorEnum::BitXorSet, OperatorEnum::BitXor),
             '!' => self.build_two(start_pos, OperatorEnum::NotEq, OperatorEnum::Not),
             '*' => self.build_two(start_pos, OperatorEnum::MulSet, OperatorEnum::Mul),
