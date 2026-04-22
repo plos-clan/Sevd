@@ -600,7 +600,7 @@ impl<'a> LexerAnalysis<'a> {
                         ));
                     }
                 }
-            },
+            }
             c => c,
         };
         c = self.next_char();

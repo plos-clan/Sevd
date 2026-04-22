@@ -84,7 +84,7 @@ pub enum ExprNode {
     Closure {
         // 闭包
         args: Vec<AstNode>,
-        ret: Token,
+        ret: GenericArg,
         blk: AstNode,
     },
     IfPattern {
@@ -106,7 +106,7 @@ pub enum AstNode {
     },
     Define {
         name: Token,
-        type_name: Option<Token>,
+        type_name: Option<GenericArg>,
     },
     DefineElse {
         head: Pattern,

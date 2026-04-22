@@ -20,13 +20,12 @@ fn parser_argument(parser: &mut Parser) -> Result<Vec<AstNode>, ParserError> {
                 let TokenType::Operator(OperatorEnum::Colon) = token.get_type() else {
                     return Err(ParserError::Expected(token, ':'));
                 };
-                token = parser.get_token()?;
-                if !matches!(token.get_type(), TokenType::Identifier) {
-                    return Err(ParserError::ExpectedToken(token, TokenType::Identifier));
-                }
+
+                let generices = parser_generics_use(parser)?;
+
                 nodes.push(AstNode::Define {
                     name,
-                    type_name: Some(token),
+                    type_name: Some(generices),
                 });
                 continue;
             }

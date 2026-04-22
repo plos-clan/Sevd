@@ -338,7 +338,6 @@ impl<'a, 'b> ExprParser<'a, 'b> {
             .get_token()
             .map_err(|_| ParserError::Expected(self.fallback_token.clone(), '|'))?;
         if let TokenType::Operator(OperatorEnum::BitOr) = token.get_type() {
-            self.parser.cache = Some(token);
             return Ok(None);
         }
 
@@ -383,17 +382,11 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 )))
             }
             TokenType::Operator(OperatorEnum::Colon) => {
-                let type_name = self.get_token().map_err(|_| {
-                    ParserError::ExpectedToken(token.clone(), TokenType::Identifier)
-                })?;
-                let TokenType::Identifier = type_name.get_type() else {
-                    return Err(ParserError::ExpectedToken(token, TokenType::Identifier));
-                };
-                self.parser.cache = Some(type_name.clone());
+                let generics = parser_generics_use(self.parser)?;
                 Ok(Some((
                     AstNode::Define {
                         name,
-                        type_name: Some(type_name),
+                        type_name: Some(generics),
                     },
                     false,
                 )))
@@ -425,24 +418,13 @@ impl<'a, 'b> ExprParser<'a, 'b> {
             return Err(ParserError::Expected(self.fallback_token.clone(), ':'));
         };
 
-        let token = self.get_token().map_err(|_| {
-            ParserError::ExpectedToken(self.fallback_token.clone(), TokenType::Identifier)
-        })?;
-        let TokenType::Identifier = token.get_type() else {
-            self.parser.cache = Some(token);
-            return Err(ParserError::ExpectedToken(
-                self.fallback_token.clone(),
-                TokenType::Identifier,
-            ));
-        };
-        let ret = token;
+        let ret = parser_generics_use(self.parser)?;
 
         let token = self
             .get_token()
-            .map_err(|_| ParserError::ExpectedToken(ret.clone(), TokenType::From))?;
+            .map_err(|_| ParserError::ExpectedToken(token.clone(), TokenType::From))?;
         let TokenType::From = token.get_type() else {
-            self.parser.cache = Some(token);
-            return Err(ParserError::ExpectedToken(ret.clone(), TokenType::From));
+            return Err(ParserError::ExpectedToken(token.clone(), TokenType::From));
         };
         self.fallback_token = token.clone();
 
