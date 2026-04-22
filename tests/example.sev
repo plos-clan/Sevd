@@ -1,4 +1,21 @@
 
-function main1<T, K>(arg1: T, arg2: K) : Result<i32, Error> {
 
+let a = if 1 + 1 == 2 { a } else { b };
+
+@inline
+function main1<T, K>(arg1: T, arg2: K) : Result<i32, Error> {
+    let Enum::Test(a) = |arg0:i32, arg1:Option<usize>| : Result<usize, Error> from {
+        arg1!
+    } else {
+        while let Enum::Test1(b) = arg1 {
+
+        }
+
+        for Enum::Test2(item):break from iter {
+
+        }
+    };
 }
+
+@inline
+@inline

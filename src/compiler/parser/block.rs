@@ -12,7 +12,7 @@ fn parse_statement(
     token: Token,
 ) -> Result<(Option<AstNode>, ExprTerminator), ParserError> {
     match token.get_type() {
-        TokenType::Let => Ok((Some(var_parser(parser)?), ExprTerminator::End)),
+        TokenType::Let => Ok((Some(var_parser(parser, token)?), ExprTerminator::End)),
         TokenType::For => Ok((Some(for_parser(parser)?), ExprTerminator::End)),
         TokenType::While => Ok((Some(while_parser(parser)?), ExprTerminator::End)),
         TokenType::End => Ok((None, ExprTerminator::End)),

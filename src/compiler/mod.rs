@@ -16,6 +16,7 @@ use crate::compiler::com_error::print_parser_error;
 use crate::compiler::lexer::LexerAnalysis;
 use crate::compiler::module::{Module, SubModule};
 use crate::compiler::parser::Parser;
+use crate::compiler::sematic::Semantic;
 use crate::compiler::symtbl::SymbolTable;
 use line_column::span::Span;
 
@@ -158,11 +159,16 @@ impl SourceFile {
         let mut lex = LexerAnalysis::new(self);
         let mut parser = Parser::new(&mut lex);
         let mut symtbl = SymbolTable::new(compiler);
-        match parser.parser(&mut symtbl) {
-            Ok(nodes) => {
-                dbg!(nodes);
+
+        let nodes = match parser.parser(&mut symtbl) {
+            Ok(nodes) => nodes,
+            Err(err) => {
+                print_parser_error(self, err);
+                return;
             }
-            Err(err) => print_parser_error(self, err),
-        }
+        };
+
+        let mut semantic = Semantic::new(self, symtbl);
+        semantic.semantic(nodes);
     }
 }

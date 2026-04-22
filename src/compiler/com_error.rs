@@ -27,28 +27,14 @@ pub enum ParserError {
     MissingEnumElement(Token),       // 缺少枚举项
 }
 
-pub fn print_parser_error(file: &SourceFile, error: ParserError) {
-    let (message, token) = match error {
-        ParserError::LexError(e) => match e {
-            LexError::UnknownChar(c, token) => (format!("Unrecognised character: {}", c), token),
-            LexError::InvalidEof(token) => ("Invalid eof".to_string(), token),
-            LexError::InvalidToken(msg, token) => (msg, token),
-        },
-        ParserError::NotAStatement(token) => ("Not a statement".to_string(), token),
-        ParserError::Expected(token, c) => (format!("'{}' expected.", c), token),
-        ParserError::ExpectedToken(token, key) => (format!("'{}' expected.", key), token),
-        ParserError::UnknownLibrary(token, message) => (message, token),
-        ParserError::UnknownType(token) => ("Unknown type".to_string(), token),
-        ParserError::IllegalExpression(token) => ("Illegal expression".to_string(), token),
-        ParserError::MissingCondition(token) => ("Missing condition".to_string(), token),
-        ParserError::IllegalKey(token) => ("Illegal key".to_string(), token),
-        ParserError::MissingFunctionBody(token) => ("Missing function body".to_string(), token),
-        ParserError::MissingLoopBody(token) => ("Missing loop body".to_string(), token),
-        ParserError::MissingStatement(token) => ("Missing statement".to_string(), token),
-        ParserError::MissingEnumElement(token) => ("Missing enum element".to_string(), token),
-    };
-    eprintln!("SyntaxError ({}): {message}", file.name);
+#[derive(Debug, Clone)]
+pub enum SematicError {
+    InvalidAnnotationTarget(Token), // 非法的注解绑定
+    MissingInitializer(Token),      // 未提供初始值
+}
 
+fn print_infomation(file: &SourceFile, message: String, token: Token) {
+    eprintln!("SyntaxError ({}): {message}", file.name);
     let start = token.get_span().start();
     let (line, column) = start.line_column();
     let line_number = line.max(1) as usize;
@@ -76,5 +62,44 @@ pub fn print_parser_error(file: &SourceFile, error: ParserError) {
         );
     } else {
         eprintln!("{} | {}{}", gutter_padding, indicator_padding, indicator);
+    }
+}
+
+pub fn print_parser_error(file: &SourceFile, error: ParserError) {
+    let (message, token) = match error {
+        ParserError::LexError(e) => match e {
+            LexError::UnknownChar(c, token) => (format!("Unrecognised character: {}", c), token),
+            LexError::InvalidEof(token) => ("Invalid eof".to_string(), token),
+            LexError::InvalidToken(msg, token) => (msg, token),
+        },
+        ParserError::NotAStatement(token) => ("Not a statement".to_string(), token),
+        ParserError::Expected(token, c) => (format!("'{}' expected.", c), token),
+        ParserError::ExpectedToken(token, key) => (format!("'{}' expected.", key), token),
+        ParserError::UnknownLibrary(token, message) => (message, token),
+        ParserError::UnknownType(token) => ("Unknown type".to_string(), token),
+        ParserError::IllegalExpression(token) => ("Illegal expression".to_string(), token),
+        ParserError::MissingCondition(token) => ("Missing condition".to_string(), token),
+        ParserError::IllegalKey(token) => ("Illegal key".to_string(), token),
+        ParserError::MissingFunctionBody(token) => ("Missing function body".to_string(), token),
+        ParserError::MissingLoopBody(token) => ("Missing loop body".to_string(), token),
+        ParserError::MissingStatement(token) => ("Missing statement".to_string(), token),
+        ParserError::MissingEnumElement(token) => ("Missing enum element".to_string(), token),
+    };
+    print_infomation(file, message, token);
+}
+
+fn print_unit_error(file: &SourceFile, error: SematicError) {
+    let (message, token) = match error {
+        SematicError::InvalidAnnotationTarget(token) => {
+            ("Invalid annotation target".to_string(), token)
+        }
+        SematicError::MissingInitializer(token) => ("Missing initializer".to_string(), token),
+    };
+    print_infomation(file, message, token);
+}
+
+pub fn print_semantic_error(file: &SourceFile, error: Vec<SematicError>) {
+    for error in error {
+        print_unit_error(file, error);
     }
 }

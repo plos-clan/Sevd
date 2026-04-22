@@ -36,7 +36,7 @@ pub struct LexerAnalysis<'a> {
     pos: TextSize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Hash, Eq, PartialOrd, Ord)]
 pub enum OperatorEnum {
     Ref,       // .
     Set,       // =

@@ -1,3 +1,6 @@
+pub mod hast;
+pub mod hir;
+
 use super::lexer::OperatorEnum;
 use crate::compiler::lexer::Token;
 use crate::compiler::SourceFile;
@@ -29,6 +32,7 @@ pub enum GenericArg {
         generics: Vec<GenericArg>,
     },
     Ident(Token),
+    Understood, // 等待推导的类型
 }
 
 #[derive(Debug, Clone)]
@@ -109,8 +113,9 @@ pub enum AstNode {
         type_name: Option<GenericArg>,
     },
     DefineElse {
+        token: Token,
         head: Pattern,
-        type_name: Option<Token>,
+        type_name: Option<GenericArg>,
         vars: Option<Box<ExprNode>>,
         el_blk: Option<Box<AstNode>>,
     },
@@ -145,11 +150,11 @@ pub enum AstNode {
     Expr(Box<ExprNode>),
     EnumDefine {
         name: Token,
-        variants: Vec<(Token, Vec<Token>)>,
+        variants: Vec<(Token, Vec<GenericArg>)>,
     },
     StructDefine {
         name: Token,
         generics: Option<Vec<Token>>,
-        fields: Vec<(Token, Token)>,
+        fields: Vec<(Token, GenericArg)>,
     },
 }

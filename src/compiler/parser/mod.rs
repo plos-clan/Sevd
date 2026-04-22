@@ -83,10 +83,11 @@ impl<'a> Parser<'a> {
         match token.get_type() {
             TokenType::Import => Ok(Some(import_parser(self, symtbl)?)),
             TokenType::Function => Ok(Some(function_parser(self)?)),
-            TokenType::Let => Ok(Some(var_parser(self)?)),
+            TokenType::Let => Ok(Some(var_parser(self, token)?)),
             TokenType::Enum => Ok(Some(enum_parser(self)?)),
             TokenType::Struct => Ok(Some(struct_parser(self)?)),
             TokenType::At => Ok(Some(annotation_parser(self)?)),
+            TokenType::End => Ok(self.root_parser(symtbl)?),
             _ => Err(ParserError::NotAStatement(token)),
         }
     }
