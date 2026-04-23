@@ -2,8 +2,8 @@ pub mod hast;
 pub mod hir;
 
 use super::lexer::OperatorEnum;
-use crate::compiler::lexer::Token;
 use crate::compiler::SourceFile;
+use crate::compiler::lexer::Token;
 
 #[derive(Debug, Clone)]
 pub enum MetaValue {

@@ -1,8 +1,8 @@
-use crate::compiler::com_error::{print_semantic_error, SematicError};
+use crate::compiler::SourceFile;
+use crate::compiler::com_error::{SematicError, print_semantic_error};
 use crate::compiler::ir::AstNode;
 use crate::compiler::sematic::resolution::resolution;
 use crate::compiler::symtbl::SymbolTable;
-use crate::compiler::SourceFile;
 
 pub mod resolution;
 

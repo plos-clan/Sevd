@@ -1,12 +1,12 @@
 use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::{AstNode, GenericArg, Pattern};
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
+use crate::compiler::parser::Parser;
 use crate::compiler::parser::generics::{parser_generics, parser_type_ref};
 use crate::compiler::parser::pattern::pattern_parser;
-use crate::compiler::parser::Parser;
 
 use super::block::block_parser;
-use super::expr::{get_of_else_end_expr, ExprType};
+use super::expr::{ExprType, get_of_else_end_expr};
 
 fn end_var_parser(
     parser: &mut Parser,

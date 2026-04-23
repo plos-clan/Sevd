@@ -1,7 +1,7 @@
+use crate::compiler::SourceFile;
 use crate::compiler::com_error::LexError;
 use crate::compiler::lexer::TokenType::Operator;
 use crate::compiler::typedef::TokenNumber;
-use crate::compiler::SourceFile;
 use line_column::span::{Span, TextRange, TextSize};
 use std::fmt::Formatter;
 use std::string::ToString;

@@ -1,9 +1,9 @@
 use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::{AstNode, GuardNode};
 use crate::compiler::lexer::TokenType;
+use crate::compiler::parser::Parser;
 use crate::compiler::parser::block::block_parser;
 use crate::compiler::parser::guard::parse_guard_chain;
-use crate::compiler::parser::Parser;
 
 pub fn while_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
     let token = parser.get_token()?;

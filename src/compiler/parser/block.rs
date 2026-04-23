@@ -1,11 +1,11 @@
 use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::AstNode;
 use crate::compiler::lexer::{Token, TokenType};
+use crate::compiler::parser::Parser;
 use crate::compiler::parser::define::var_parser;
-use crate::compiler::parser::expr::{get_of_end_or_block_end_expr, ExprTerminator, ExprType};
+use crate::compiler::parser::expr::{ExprTerminator, ExprType, get_of_end_or_block_end_expr};
 use crate::compiler::parser::fors::for_parser;
 use crate::compiler::parser::whiles::while_parser;
-use crate::compiler::parser::Parser;
 
 fn parse_statement(
     parser: &mut Parser,

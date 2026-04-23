@@ -2,10 +2,10 @@ use crate::compiler::com_error::ParserError;
 use crate::compiler::com_error::ParserError::{IllegalExpression, IllegalKey};
 use crate::compiler::ir::{AstNode, ExprNode};
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
+use crate::compiler::parser::Parser;
 use crate::compiler::parser::block::block_parser;
 use crate::compiler::parser::generics::parser_type_ref;
 use crate::compiler::parser::ifs::if_parser;
-use crate::compiler::parser::Parser;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum ExprType {
@@ -295,14 +295,14 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                     }
 
                     TokenType::Operator(operator)
-                    if !matches!(operator, OperatorEnum::Plus | OperatorEnum::Minus) =>
-                        {
-                            expr_tree = ExprNode::Unary {
-                                token: token.clone(),
-                                operator: *operator,
-                                child: Box::new(expr_tree),
-                            }
+                        if !matches!(operator, OperatorEnum::Plus | OperatorEnum::Minus) =>
+                    {
+                        expr_tree = ExprNode::Unary {
+                            token: token.clone(),
+                            operator: *operator,
+                            child: Box::new(expr_tree),
                         }
+                    }
                     _ => return Err(IllegalExpression(token)),
                 }
                 continue;

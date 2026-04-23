@@ -1,8 +1,8 @@
 use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::AstNode;
 use crate::compiler::lexer::{OperatorEnum, TokenType};
-use crate::compiler::parser::generics::{parser_constraint, parser_generics, parser_type_ref};
 use crate::compiler::parser::Parser;
+use crate::compiler::parser::generics::{parser_constraint, parser_generics, parser_type_ref};
 
 use super::block::block_parser;
 

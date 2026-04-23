@@ -95,7 +95,9 @@ fn print_unit_error(file: &SourceFile, error: SematicError) {
             ("Invalid annotation target".to_string(), token)
         }
         SematicError::MissingInitializer(token) => ("Missing initializer".to_string(), token),
-        SematicError::MissingGenericConstraint(token) => ("Missing generic constraint".to_string(), token),
+        SematicError::MissingGenericConstraint(token) => {
+            ("Missing generic constraint".to_string(), token)
+        }
     };
     print_infomation(file, message, token);
 }
