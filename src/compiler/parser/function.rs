@@ -1,11 +1,10 @@
 use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::AstNode;
 use crate::compiler::lexer::{OperatorEnum, TokenType};
-use crate::compiler::parser::generics::parser_generics;
+use crate::compiler::parser::generics::{parser_constraint, parser_generics, parser_type_ref};
 use crate::compiler::parser::Parser;
 
 use super::block::block_parser;
-use super::generics::parser_generics_use;
 
 fn parser_argument(parser: &mut Parser) -> Result<Vec<AstNode>, ParserError> {
     let mut nodes = vec![];
@@ -21,7 +20,7 @@ fn parser_argument(parser: &mut Parser) -> Result<Vec<AstNode>, ParserError> {
                     return Err(ParserError::Expected(token, ':'));
                 };
 
-                let generices = parser_generics_use(parser)?;
+                let generices = parser_type_ref(parser)?;
 
                 nodes.push(AstNode::Define {
                     name,
@@ -73,11 +72,20 @@ pub fn function_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
         _ => return Err(ParserError::Expected(token, '(')),
     };
 
-    let ret_type = parser_generics_use(parser)?;
+    let ret_type = parser_type_ref(parser)?;
+
+    token = parser.get_token()?;
+    let constraint = if let TokenType::Extend = token.get_type() {
+        Some(parser_constraint(parser)?)
+    } else {
+        parser.cache = Some(token);
+        None
+    };
 
     Ok(AstNode::Function {
         name,
         generics,
+        constraint,
         args,
         ret_type,
         block: Box::new(block_parser(parser)?),

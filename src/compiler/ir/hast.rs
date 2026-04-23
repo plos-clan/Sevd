@@ -13,7 +13,7 @@ pub struct HastGlobal {
 #[derive(Debug, Clone)]
 pub struct HastFunction {
     pub args: Vec<(Token, GenericArg)>,
-    pub generics: Option<Vec<Token>>,
+    pub constraint: Option<Vec<(Token, Vec<GenericArg>)>>,
     pub ret: GenericArg,
     pub name: Token,
     pub attributes: Vec<(Token, Vec<AnnotationElement>)>,

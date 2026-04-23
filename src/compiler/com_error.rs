@@ -29,8 +29,9 @@ pub enum ParserError {
 
 #[derive(Debug, Clone)]
 pub enum SematicError {
-    InvalidAnnotationTarget(Token), // 非法的注解绑定
-    MissingInitializer(Token),      // 未提供初始值
+    InvalidAnnotationTarget(Token),  // 非法的注解绑定
+    MissingGenericConstraint(Token), // 未提供泛型的绑定规则
+    MissingInitializer(Token),       // 未提供初始值
 }
 
 fn print_infomation(file: &SourceFile, message: String, token: Token) {
@@ -94,6 +95,7 @@ fn print_unit_error(file: &SourceFile, error: SematicError) {
             ("Invalid annotation target".to_string(), token)
         }
         SematicError::MissingInitializer(token) => ("Missing initializer".to_string(), token),
+        SematicError::MissingGenericConstraint(token) => ("Missing generic constraint".to_string(), token),
     };
     print_infomation(file, message, token);
 }

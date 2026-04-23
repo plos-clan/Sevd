@@ -3,7 +3,11 @@
 let a = if 1 + 1 == 2 { a } else { b };
 
 @inline
-function main1<T, K>(arg1: T, arg2: K) : Result<i32, Error> {
+function main1<T, K>(arg1: T, arg2: K) : (Result<i32, Error>)
+extend
+    T: Copy + Result,
+    K: Clone + Copy
+{
     let Enum::Test(a) = |arg0:i32, arg1:Option<usize>| : Result<usize, Error> from {
         arg1!
     } else {
@@ -17,5 +21,3 @@ function main1<T, K>(arg1: T, arg2: K) : Result<i32, Error> {
     };
 }
 
-@inline
-@inline

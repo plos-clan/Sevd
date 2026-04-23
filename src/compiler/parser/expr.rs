@@ -3,7 +3,7 @@ use crate::compiler::com_error::ParserError::{IllegalExpression, IllegalKey};
 use crate::compiler::ir::{AstNode, ExprNode};
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
 use crate::compiler::parser::block::block_parser;
-use crate::compiler::parser::generics::parser_generics_use;
+use crate::compiler::parser::generics::parser_type_ref;
 use crate::compiler::parser::ifs::if_parser;
 use crate::compiler::parser::Parser;
 
@@ -113,7 +113,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         let mut token = self.get_token()?;
 
         let generics = if let TokenType::Operator(OperatorEnum::Less) = token.get_type() {
-            let ga = parser_generics_use(self.parser)?;
+            let ga = parser_type_ref(self.parser)?;
             token = self.get_token()?;
             let TokenType::Operator(OperatorEnum::Big) = token.get_type() else {
                 return Err(ParserError::Expected(token, '>'));
@@ -382,7 +382,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 )))
             }
             TokenType::Operator(OperatorEnum::Colon) => {
-                let generics = parser_generics_use(self.parser)?;
+                let generics = parser_type_ref(self.parser)?;
                 Ok(Some((
                     AstNode::Define {
                         name,
@@ -418,7 +418,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
             return Err(ParserError::Expected(self.fallback_token.clone(), ':'));
         };
 
-        let ret = parser_generics_use(self.parser)?;
+        let ret = parser_type_ref(self.parser)?;
 
         let token = self
             .get_token()

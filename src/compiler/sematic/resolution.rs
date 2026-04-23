@@ -22,6 +22,54 @@ fn argument_to_iterm(args: Vec<AstNode>) -> Vec<(Token, GenericArg)> {
     arguments
 }
 
+fn generic_resolution(
+    func: AstNode,
+    attributes: Vec<(Token, Vec<AnnotationElement>)>,
+) -> Result<HastItem, SematicError> {
+    let AstNode::Function {
+        name,
+        generics,
+        constraint,
+        ret_type,
+        args,
+        block,
+    } = func
+    else {
+        unreachable!()
+    };
+
+    let constraint_opt = if let Some(generics) = generics {
+        let mut constraints_target = vec![];
+        for token in generics {
+            let token_text = token.get_span().text();
+            let constraints = constraint.as_deref().unwrap_or(&[]);
+            if let Some((_, my_type)) = constraints
+                .iter()
+                .find(|(token, _)| token.get_span().text() == token_text)
+            {
+                constraints_target.push((token, my_type.clone()));
+            } else {
+                constraints_target.push((token, vec![GenericArg::Understood]));
+            }
+        }
+        Some(constraints_target)
+    } else {
+        if constraint.is_some() {
+            return Err(SematicError::MissingGenericConstraint(name));
+        }
+        None
+    };
+
+    Ok(HastItem::Function(Box::new(HastFunction {
+        name,
+        args: argument_to_iterm(args),
+        ret: ret_type,
+        attributes,
+        constraint: constraint_opt,
+        body: block.as_ref().clone(),
+    })))
+}
+
 fn semantic_item(iter: &mut Peekable<IntoIter<AstNode>>) -> Result<Option<HastItem>, SematicError> {
     let mut attributes = vec![];
 
@@ -50,20 +98,7 @@ fn semantic_item(iter: &mut Peekable<IntoIter<AstNode>>) -> Result<Option<HastIt
         return Err(SematicError::InvalidAnnotationTarget(token.clone()));
     };
     match node {
-        AstNode::Function {
-            name,
-            generics,
-            ret_type,
-            args,
-            block,
-        } => Ok(Some(HastItem::Function(Box::new(HastFunction {
-            name,
-            args: argument_to_iterm(args),
-            ret: ret_type,
-            attributes,
-            generics,
-            body: block.as_ref().clone(),
-        })))),
+        AstNode::Function { .. } => Ok(Some(generic_resolution(node, attributes)?)),
         AstNode::StructDefine {
             name,
             generics,

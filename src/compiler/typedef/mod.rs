@@ -22,6 +22,7 @@ pub enum FltTy {
 pub enum TypeKind<'tcx> {
     Int(IntTy),
     Float(FltTy),
+    Bool,
     Str,
     Null,
     Void,

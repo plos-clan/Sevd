@@ -26,7 +26,7 @@ pub enum GuardNode {
 
 #[derive(Debug, Clone)]
 pub enum GenericArg {
-    Tuple(Vec<Token>),
+    Tuple(Vec<GenericArg>),
     Named {
         name: Token,
         generics: Vec<GenericArg>,
@@ -143,6 +143,7 @@ pub enum AstNode {
     Function {
         name: Token,
         generics: Option<Vec<Token>>,
+        constraint: Option<Vec<(Token, Vec<GenericArg>)>>,
         ret_type: GenericArg,
         args: Vec<AstNode>,
         block: Box<AstNode>,

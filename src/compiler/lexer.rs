@@ -8,7 +8,7 @@ use std::string::ToString;
 use std::{fmt::Display, ops::Sub};
 use text_size::TextLen;
 
-const KEYWORDS: [(&str, TokenType); 18] = [
+const KEYWORDS: [(&str, TokenType); 19] = [
     ("for", TokenType::For),
     ("while", TokenType::While),
     ("if", TokenType::If),
@@ -27,6 +27,7 @@ const KEYWORDS: [(&str, TokenType); 18] = [
     ("from", TokenType::From),
     ("enum", TokenType::Enum),
     ("struct", TokenType::Struct),
+    ("extend", TokenType::Extend),
 ];
 
 #[derive(Debug)]
@@ -108,6 +109,7 @@ pub enum TokenType {
     Export,
     Enum,
     Struct,
+    Extend,
 }
 
 impl Display for TokenType {
@@ -142,6 +144,7 @@ impl Display for TokenType {
             TokenType::Export => f.write_str("export"),
             TokenType::Enum => f.write_str("enum"),
             TokenType::Struct => f.write_str("struct"),
+            TokenType::Extend => f.write_str("extend"),
         }
     }
 }
