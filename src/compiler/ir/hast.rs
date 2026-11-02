@@ -1,10 +1,70 @@
-use super::{AnnotationElement, AstNode, ExprNode, GenericArg, Pattern};
-use crate::compiler::lexer::Token;
+use super::{AnnotationElement, AstNode, ExprNode, Pattern, TypeRef};
+use crate::compiler::lexer::{OperatorEnum, Token};
+
+#[derive(Debug, Clone)]
+pub enum HastExpr {
+    Literal(Token),
+    Identifier {
+        ident: Token,
+        generics: Option<TypeRef>,
+    },
+    Try(Box<HastExpr>),    // ?
+    Unpack(Box<HastExpr>), // !
+    Tuple(Vec<HastExpr>),
+    Struct {
+        name: Token,
+        fields: Vec<(Token, HastExpr)>,
+        generics: Option<TypeRef>,
+    },
+    Binary {
+        token: Token,
+        operator: OperatorEnum,
+        ty: TypeRef,
+        left: Box<HastExpr>,
+        right: Box<HastExpr>,
+    },
+    Unary {
+        token: Token,
+        ty: TypeRef,
+        operator: OperatorEnum,
+        child: Box<HastExpr>,
+    },
+    CallCort {
+        // 枚举 / 函数调用
+        call: Box<HastExpr>,
+        args: Vec<HastExpr>,
+        generics: Option<Vec<TypeRef>>,
+    },
+    Closure {
+        // 闭包
+        args: Vec<AstNode>,
+        ret: TypeRef,
+        blk: AstNode,
+    },
+    IfPattern {
+        cond: Vec<HastExpr>,
+        body: HastStmt,
+        else_body: Option<HastStmt>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum HastStmt {
+    Local {
+        name: Token,
+        ty: TypeRef,
+        init: Option<Box<HastExpr>>,
+    },
+    Block {
+        body: Vec<HastStmt>,
+        tail: Option<Box<HastExpr>>,
+    },
+}
 
 #[derive(Debug, Clone)]
 pub struct HastGlobal {
     pub pat: Pattern,
-    pub ty: GenericArg,
+    pub ty: TypeRef,
     pub attributes: Vec<(Token, Vec<AnnotationElement>)>,
     pub init: ExprNode,
     pub el: Option<AstNode>,
@@ -12,9 +72,9 @@ pub struct HastGlobal {
 
 #[derive(Debug, Clone)]
 pub struct HastFunction {
-    pub args: Vec<(Token, GenericArg)>,
-    pub constraint: Option<Vec<(Token, Vec<GenericArg>)>>,
-    pub ret: GenericArg,
+    pub args: Vec<(Token, TypeRef)>,
+    pub constraint: Option<Vec<(Token, Vec<TypeRef>)>>,
+    pub ret: TypeRef,
     pub name: Token,
     pub attributes: Vec<(Token, Vec<AnnotationElement>)>,
     pub body: AstNode,
@@ -24,7 +84,7 @@ pub struct HastFunction {
 pub struct HastStruct {
     pub name: Token,
     pub generics: Option<Vec<Token>>,
-    pub fields: Vec<(Token, GenericArg)>,
+    pub fields: Vec<(Token, TypeRef)>,
     pub attributes: Vec<(Token, Vec<AnnotationElement>)>,
 }
 
@@ -32,7 +92,7 @@ pub struct HastStruct {
 #[derive(Debug, Clone)]
 pub struct HastEnum {
     pub(crate) name: Token,
-    pub(crate) variants: Vec<(Token, Vec<GenericArg>)>,
+    pub(crate) variants: Vec<(Token, Vec<TypeRef>)>,
     pub(crate) attributes: Vec<(Token, Vec<AnnotationElement>)>,
 }
 

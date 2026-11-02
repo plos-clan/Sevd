@@ -1,5 +1,5 @@
 use crate::compiler::com_error::ParserError;
-use crate::compiler::ir::{AstNode, GenericArg, Pattern};
+use crate::compiler::ir::{AstNode, Pattern, TypeRef};
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
 use crate::compiler::parser::Parser;
 use crate::compiler::parser::generics::{parser_generics, parser_type_ref};
@@ -71,7 +71,7 @@ pub fn var_parser(parser: &mut Parser, last: Token) -> Result<AstNode, ParserErr
     }
 }
 
-fn parser_enum_fields(parser: &mut Parser) -> Result<Vec<GenericArg>, ParserError> {
+fn parser_enum_fields(parser: &mut Parser) -> Result<Vec<TypeRef>, ParserError> {
     let mut enum_fields = vec![];
     loop {
         let generic = parser_type_ref(parser)?;
@@ -86,9 +86,7 @@ fn parser_enum_fields(parser: &mut Parser) -> Result<Vec<GenericArg>, ParserErro
     Ok(enum_fields)
 }
 
-fn parser_enum_element(
-    parser: &mut Parser,
-) -> Result<Option<(Token, Vec<GenericArg>)>, ParserError> {
+fn parser_enum_element(parser: &mut Parser) -> Result<Option<(Token, Vec<TypeRef>)>, ParserError> {
     let mut token = parser.get_token()?;
     match token.get_type() {
         TokenType::Lr('}') => Ok(None),
@@ -127,7 +125,7 @@ pub fn enum_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
     Ok(AstNode::EnumDefine { name, variants })
 }
 
-fn field_parser(parser: &mut Parser) -> Result<Vec<(Token, GenericArg)>, ParserError> {
+fn field_parser(parser: &mut Parser) -> Result<Vec<(Token, TypeRef)>, ParserError> {
     let mut token = parser.get_token()?;
     let mut fields = Vec::new();
     if !matches!(token.get_type(), TokenType::Lp('{')) {

@@ -1,7 +1,7 @@
 use std::vec;
 
 use crate::compiler::com_error::ParserError;
-use crate::compiler::ir::GenericArg;
+use crate::compiler::ir::TypeRef;
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
 use crate::compiler::parser::Parser;
 
@@ -26,7 +26,7 @@ pub fn parser_generics(parser: &mut Parser) -> Result<Vec<Token>, ParserError> {
 }
 
 /// 用于引用语法, 如 Ident<Struct<i32,i64>>/i32/(usize, i32)
-pub fn parser_type_ref(parser: &mut Parser) -> Result<GenericArg, ParserError> {
+pub fn parser_type_ref(parser: &mut Parser) -> Result<TypeRef, ParserError> {
     let mut token = parser.get_token()?;
 
     if let TokenType::Lp('(') = token.get_type() {
@@ -44,7 +44,7 @@ pub fn parser_type_ref(parser: &mut Parser) -> Result<GenericArg, ParserError> {
         return if elements.len() == 1 {
             Ok(elements.into_iter().next().unwrap())
         } else {
-            Ok(GenericArg::Tuple(elements))
+            Ok(TypeRef::Tuple(elements))
         };
     }
 
@@ -65,16 +65,16 @@ pub fn parser_type_ref(parser: &mut Parser) -> Result<GenericArg, ParserError> {
                 _ => return Err(ParserError::Expected(token, '>')),
             }
         }
-        Ok(GenericArg::Named { name, generics })
+        Ok(TypeRef::Named { name, generics })
     } else {
         parser.cache = Some(token);
-        Ok(GenericArg::Ident(name))
+        Ok(TypeRef::Ident(name))
     }
 }
 
 fn parser_constraint_unit(
     parser: &mut Parser,
-) -> Result<Option<(Token, Vec<GenericArg>)>, ParserError> {
+) -> Result<Option<(Token, Vec<TypeRef>)>, ParserError> {
     let mut token = parser.get_token()?;
     let TokenType::Identifier = token.get_type() else {
         return Err(ParserError::ExpectedToken(token, TokenType::Identifier));
@@ -97,9 +97,7 @@ fn parser_constraint_unit(
     Ok(Some((name, generics)))
 }
 
-pub fn parser_constraint(
-    parser: &mut Parser,
-) -> Result<Vec<(Token, Vec<GenericArg>)>, ParserError> {
+pub fn parser_constraint(parser: &mut Parser) -> Result<Vec<(Token, Vec<TypeRef>)>, ParserError> {
     let mut constraints = vec![];
     while let Some(constraint) = parser_constraint_unit(parser)? {
         constraints.push(constraint);

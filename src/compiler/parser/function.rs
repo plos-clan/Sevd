@@ -75,11 +75,13 @@ pub fn function_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
     let ret_type = parser_type_ref(parser)?;
 
     token = parser.get_token()?;
-    let constraint = if let TokenType::Extend = token.get_type() {
-        Some(parser_constraint(parser)?)
-    } else {
-        parser.cache = Some(token);
-        None
+    let constraint = match token.get_type() {
+        TokenType::Restrict => Some(parser_constraint(parser)?),
+        TokenType::Lp('{') => {
+            parser.cache = Some(token);
+            None
+        }
+        _=> return Err(ParserError::Expected(token, '{')),
     };
 
     Ok(AstNode::Function {

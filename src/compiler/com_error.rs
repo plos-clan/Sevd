@@ -1,7 +1,7 @@
-use std::io::IsTerminal;
-
-use super::lexer::{Token, TokenType};
+use super::lexer::{OperatorEnum, Token, TokenType};
 use crate::compiler::SourceFile;
+use crate::compiler::ir::tnode::TypeKind;
+use std::io::IsTerminal;
 
 #[derive(Debug, Clone)]
 pub enum LexError {
@@ -17,7 +17,7 @@ pub enum ParserError {
     Expected(Token, char),           // 需要指定字符
     ExpectedToken(Token, TokenType), // 需要制定词元类型
     UnknownLibrary(Token, String),   // 找不到指定的模块
-    UnknownType(Token),              // 未知类型
+    IllegalStmtEnd(Token),           // 非法语句结束
     IllegalExpression(Token),        // 非法的表达式组合
     MissingCondition(Token),         // 缺少条件表达式
     IllegalKey(Token),               // 非法的关键字
@@ -29,9 +29,14 @@ pub enum ParserError {
 
 #[derive(Debug, Clone)]
 pub enum SematicError {
-    InvalidAnnotationTarget(Token),  // 非法的注解绑定
-    MissingGenericConstraint(Token), // 未提供泛型的绑定规则
-    MissingInitializer(Token),       // 未提供初始值
+    InvalidAnnotationTarget(Token),                    // 非法的注解绑定
+    InvalidGeneratorPassing(Token),                    // 非法的泛型传递
+    InvalidTypeApplied(Token, OperatorEnum, TypeKind), // 非法类型应用
+    MissingGenericConstraint(Token),                   // 未提供泛型的绑定规则
+    MissingInitializer(Token),                         // 未提供初始值
+    MissingBlockFinalValue(Token),                     // 块语句缺失最终值
+    UnresolvedSymbol(Token),                           // 无法解析符号
+    NeedType(Token, TypeKind, TypeKind),               // 需求类型与实际类型不符
 }
 
 fn print_infomation(file: &SourceFile, message: String, token: Token) {
@@ -55,29 +60,28 @@ fn print_infomation(file: &SourceFile, message: String, token: Token) {
     let indicator_padding = " ".repeat(pointer_offset);
     let indicator = format!("^{}", "~".repeat(underline_len.saturating_sub(1)));
 
-    eprintln!("{} | {}", line_prefix, line_text);
+    eprintln!("{line_prefix} | {line_text}");
     if is_terminal {
         eprintln!(
-            "{} | {}\x1b[31m{}\x1b[0m",
-            gutter_padding, indicator_padding, indicator
+            "{gutter_padding} | {indicator_padding}\x1b[31m{indicator}\x1b[0m",
         );
     } else {
-        eprintln!("{} | {}{}", gutter_padding, indicator_padding, indicator);
+        eprintln!("{gutter_padding} | {indicator_padding}{indicator}",);
     }
 }
 
 pub fn print_parser_error(file: &SourceFile, error: ParserError) {
     let (message, token) = match error {
         ParserError::LexError(e) => match e {
-            LexError::UnknownChar(c, token) => (format!("Unrecognised character: {}", c), token),
+            LexError::UnknownChar(c, token) => (format!("Unrecognised character: {c}"), token),
             LexError::InvalidEof(token) => ("Invalid eof".to_string(), token),
             LexError::InvalidToken(msg, token) => (msg, token),
         },
         ParserError::NotAStatement(token) => ("Not a statement".to_string(), token),
         ParserError::Expected(token, c) => (format!("'{}' expected.", c), token),
-        ParserError::ExpectedToken(token, key) => (format!("'{}' expected.", key), token),
+        ParserError::ExpectedToken(token, key) => (format!("'{key}' expected."), token),
         ParserError::UnknownLibrary(token, message) => (message, token),
-        ParserError::UnknownType(token) => ("Unknown type".to_string(), token),
+        ParserError::IllegalStmtEnd(token) => ("Illegal statement end".to_string(), token),
         ParserError::IllegalExpression(token) => ("Illegal expression".to_string(), token),
         ParserError::MissingCondition(token) => ("Missing condition".to_string(), token),
         ParserError::IllegalKey(token) => ("Illegal key".to_string(), token),
@@ -97,6 +101,20 @@ fn print_unit_error(file: &SourceFile, error: SematicError) {
         SematicError::MissingInitializer(token) => ("Missing initializer".to_string(), token),
         SematicError::MissingGenericConstraint(token) => {
             ("Missing generic constraint".to_string(), token)
+        }
+        SematicError::MissingBlockFinalValue(token) => {
+            ("Missing block final value".to_string(), token)
+        }
+        SematicError::UnresolvedSymbol(token) => ("Unresolved symbol".to_string(), token),
+        SematicError::InvalidGeneratorPassing(token) => {
+            ("Invalid generator passing".to_string(), token)
+        }
+        SematicError::InvalidTypeApplied(token, opt, kind) => (
+            format!("Operator '{opt}' cannot be applied to type '{kind}'").to_string(),
+            token,
+        ),
+        SematicError::NeedType(token, need, has) => {
+            (format!("expected '{need}', found '{has}'").to_string(), token)
         }
     };
     print_infomation(file, message, token);

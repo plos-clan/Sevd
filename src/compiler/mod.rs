@@ -5,7 +5,6 @@ pub mod module;
 pub mod parser;
 pub mod sematic;
 mod symtbl;
-mod typedef;
 
 use std::{
     fs,

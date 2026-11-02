@@ -1,14 +1,13 @@
 use crate::compiler::SourceFile;
 use crate::compiler::com_error::LexError;
 use crate::compiler::lexer::TokenType::Operator;
-use crate::compiler::typedef::TokenNumber;
 use line_column::span::{Span, TextRange, TextSize};
 use std::fmt::Formatter;
 use std::string::ToString;
 use std::{fmt::Display, ops::Sub};
 use text_size::TextLen;
 
-const KEYWORDS: [(&str, TokenType); 19] = [
+const KEYWORDS: [(&str, TokenType); 20] = [
     ("for", TokenType::For),
     ("while", TokenType::While),
     ("if", TokenType::If),
@@ -27,7 +26,8 @@ const KEYWORDS: [(&str, TokenType); 19] = [
     ("from", TokenType::From),
     ("enum", TokenType::Enum),
     ("struct", TokenType::Struct),
-    ("extend", TokenType::Extend),
+    ("restrict", TokenType::Restrict),
+    ("as", TokenType::As),
 ];
 
 #[derive(Debug)]
@@ -35,6 +35,20 @@ pub struct LexerAnalysis<'a> {
     file: &'a SourceFile,
     cache: Option<char>,
     pos: TextSize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TokenNumber {
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    F32(f32),
+    F64(f64),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Hash, Eq, PartialOrd, Ord)]
@@ -78,6 +92,49 @@ pub enum OperatorEnum {
     Array, // [] (语法分析填充)
 }
 
+impl Display for OperatorEnum {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self { 
+            OperatorEnum::Ref => write!(f, "."),
+            OperatorEnum::Set => write!(f, "="),
+            OperatorEnum::NotEq => write!(f, "!="),
+            OperatorEnum::Eq => write!(f, "=="),
+            OperatorEnum::BigEq => write!(f, ">="),
+            OperatorEnum::LesEq => write!(f, "<="),
+            OperatorEnum::Big => write!(f, ">"),
+            OperatorEnum::Less => write!(f, "<"),
+            OperatorEnum::Colon => write!(f, ":"),
+            OperatorEnum::Path => write!(f, "::"),
+            OperatorEnum::Question => write!(f, "?"),
+            OperatorEnum::Comma => write!(f, ","),
+            OperatorEnum::Not => write!(f, "!"),
+            OperatorEnum::And => write!(f, "&&"),
+            OperatorEnum::Or => write!(f, "||"),
+            OperatorEnum::BitOr => write!(f, "|"),
+            OperatorEnum::BitAnd => write!(f, "&"),
+            OperatorEnum::BitXor => write!(f, "^"),
+            OperatorEnum::BitLeft => write!(f, "<<"),
+            OperatorEnum::BitRight => write!(f, ">>"),
+            OperatorEnum::Plus => write!(f, "++"),
+            OperatorEnum::Minus => write!(f, "--"),
+            OperatorEnum::AddSet => write!(f, "+="),
+            OperatorEnum::SubSet => write!(f, "-="),
+            OperatorEnum::MulSet => write!(f, "*="),
+            OperatorEnum::DivSet => write!(f, "/="),
+            OperatorEnum::ModSet => write!(f, "%="),
+            OperatorEnum::BitAndSet => write!(f, "&="),
+            OperatorEnum::BitXorSet => write!(f, "^="),
+            OperatorEnum::BitOrSet => write!(f, "|="),
+            OperatorEnum::Add => write!(f, "+"),
+            OperatorEnum::Sub => write!(f, "-"),
+            OperatorEnum::Mul => write!(f, "*"),
+            OperatorEnum::Div => write!(f, "/"),
+            OperatorEnum::Mod => write!(f, "%"),
+            OperatorEnum::Array => write!(f, "[array]"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     Eof,
@@ -109,7 +166,8 @@ pub enum TokenType {
     Export,
     Enum,
     Struct,
-    Extend,
+    Restrict,
+    As,
 }
 
 impl Display for TokenType {
@@ -118,11 +176,11 @@ impl Display for TokenType {
             TokenType::Eof => f.write_str("<eof>"),
             TokenType::Identifier => f.write_str("<identifier>"),
             TokenType::Number(token_number) => {
-                f.write_fmt(format_args!("number {:?}", token_number))
+                f.write_fmt(format_args!("number {token_number:?}"))
             }
-            Operator(operator_enum) => f.write_fmt(format_args!("operator {:?}", operator_enum)),
+            Operator(operator_enum) => f.write_fmt(format_args!("operator {operator_enum:?}")),
             TokenType::String(need) => f.write_fmt(format_args!("\"{need}\"")),
-            TokenType::Char(char) => f.write_fmt(format_args!("'{:?}'", char)),
+            TokenType::Char(char) => f.write_fmt(format_args!("'{char:?}'")),
             TokenType::End => f.write_str(";"),
             TokenType::At => f.write_str("@"),
             TokenType::Lp(c) | TokenType::Lr(c) => f.write_fmt(format_args!("{c}")),
@@ -144,7 +202,8 @@ impl Display for TokenType {
             TokenType::Export => f.write_str("export"),
             TokenType::Enum => f.write_str("enum"),
             TokenType::Struct => f.write_str("struct"),
-            TokenType::Extend => f.write_str("extend"),
+            TokenType::Restrict => f.write_str("restrict"),
+            TokenType::As => f.write_str("as"),
         }
     }
 }
@@ -158,7 +217,7 @@ pub struct Token {
 impl Token {
     pub fn no_span_new(types: TokenType) -> Self {
         Self {
-            span: Span::new_full("".to_string()),
+            span: Span::new_full(String::new()),
             t_type: types,
         }
     }
@@ -489,23 +548,23 @@ impl<'a> LexerAnalysis<'a> {
         one: OperatorEnum,
         two: OperatorEnum,
         three: OperatorEnum,
-    ) -> Result<Token, LexError> {
+    ) -> Token {
         let fist_char = self.next_char();
         match fist_char {
-            '=' => Ok(Token {
+            '=' => Token {
                 span: self.make_span(start, self.pos),
                 t_type: Operator(one),
-            }),
-            c if c == tchar => Ok(Token {
+            },
+            c if c == tchar => Token {
                 span: self.make_span(start, self.pos),
                 t_type: Operator(two),
-            }),
+            },
             c => {
                 self.cache = Some(c);
-                Ok(Token {
+                Token {
                     span: self.make_span(start, self.pos),
                     t_type: Operator(three),
-                })
+                }
             }
         }
     }
@@ -515,19 +574,19 @@ impl<'a> LexerAnalysis<'a> {
         start: TextSize,
         fir: OperatorEnum,
         sec: OperatorEnum,
-    ) -> Result<Token, LexError> {
+    ) -> Token {
         let fist_char = self.next_char();
         match fist_char {
-            '=' => Ok(Token {
+            '=' => Token {
                 span: self.make_span(start, self.pos),
                 t_type: Operator(fir),
-            }),
+            },
             c => {
                 self.cache = Some(c);
-                Ok(Token {
+                Token {
                     span: self.make_span(start, self.pos),
                     t_type: Operator(sec),
-                })
+                }
             }
         }
     }
@@ -552,18 +611,16 @@ impl<'a> LexerAnalysis<'a> {
                         c = self.next_char();
                         if c == '/' {
                             break;
-                        } else if c == '\0' {
-                            return Err(LexError::InvalidEof(Token {
-                                span: self.make_span(start, self.pos),
-                                t_type: TokenType::String(c.to_string()),
-                            }));
+                        } else if c != '\0' {
+                            continue
                         }
-                    } else if c == '\0' {
-                        return Err(LexError::InvalidEof(Token {
-                            span: self.make_span(start, self.pos),
-                            t_type: TokenType::String(c.to_string()),
-                        }));
+                    } else if c != '\0' {
+                        continue
                     }
+                    return Err(LexError::InvalidEof(Token {
+                        span: self.make_span(start, self.pos),
+                        t_type: TokenType::String(c.to_string()),
+                    }));
                 }
                 self.get_token()
             }
@@ -676,54 +733,54 @@ impl<'a> LexerAnalysis<'a> {
                 span: self.make_span(start_pos, start_pos),
                 t_type: Operator(OperatorEnum::Question),
             }),
-            '=' => self.build_two(start_pos, OperatorEnum::Eq, OperatorEnum::Set),
-            '+' => self.build_three(
+            '=' => Ok(self.build_two(start_pos, OperatorEnum::Eq, OperatorEnum::Set)),
+            '+' => Ok(self.build_three(
                 start_pos,
                 '+',
                 OperatorEnum::AddSet,
                 OperatorEnum::Plus,
                 OperatorEnum::Add,
-            ),
-            '-' => self.build_three(
+            )),
+            '-' => Ok(self.build_three(
                 start_pos,
                 '-',
                 OperatorEnum::SubSet,
                 OperatorEnum::Minus,
                 OperatorEnum::Sub,
-            ),
-            '&' => self.build_three(
+            )),
+            '&' => Ok(self.build_three(
                 start_pos,
                 '&',
                 OperatorEnum::BitAndSet,
                 OperatorEnum::And,
                 OperatorEnum::BitAnd,
-            ),
-            '|' => self.build_three(
+            )),
+            '|' => Ok(self.build_three(
                 start_pos,
                 '|',
                 OperatorEnum::BitOrSet,
                 OperatorEnum::Or,
                 OperatorEnum::BitOr,
-            ),
-            '>' => self.build_three(
+            )),
+            '>' => Ok(self.build_three(
                 start_pos,
                 '>',
                 OperatorEnum::BigEq,
                 OperatorEnum::BitRight,
                 OperatorEnum::Big,
-            ),
-            '<' => self.build_three(
+            )),
+            '<' => Ok(self.build_three(
                 start_pos,
                 '>',
                 OperatorEnum::LesEq,
                 OperatorEnum::BitLeft,
                 OperatorEnum::Less,
-            ),
+            )),
             '\'' => self.build_char(start_pos),
-            '^' => self.build_two(start_pos, OperatorEnum::BitXorSet, OperatorEnum::BitXor),
-            '!' => self.build_two(start_pos, OperatorEnum::NotEq, OperatorEnum::Not),
-            '*' => self.build_two(start_pos, OperatorEnum::MulSet, OperatorEnum::Mul),
-            '%' => self.build_two(start_pos, OperatorEnum::ModSet, OperatorEnum::Mod),
+            '^' => Ok(self.build_two(start_pos, OperatorEnum::BitXorSet, OperatorEnum::BitXor)),
+            '!' => Ok(self.build_two(start_pos, OperatorEnum::NotEq, OperatorEnum::Not)),
+            '*' => Ok(self.build_two(start_pos, OperatorEnum::MulSet, OperatorEnum::Mul)),
+            '%' => Ok(self.build_two(start_pos, OperatorEnum::ModSet, OperatorEnum::Mod)),
             '/' => self.build_opt_skip_text(start_pos),
             c if matches!(c, '{' | '[' | '(') => Ok(Token {
                 span: self.make_span(start_pos, start_pos),

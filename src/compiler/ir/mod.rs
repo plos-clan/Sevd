@@ -1,5 +1,6 @@
 pub mod hast;
 pub mod hir;
+pub mod tnode;
 
 use super::lexer::OperatorEnum;
 use crate::compiler::SourceFile;
@@ -25,12 +26,9 @@ pub enum GuardNode {
 }
 
 #[derive(Debug, Clone)]
-pub enum GenericArg {
-    Tuple(Vec<GenericArg>),
-    Named {
-        name: Token,
-        generics: Vec<GenericArg>,
-    },
+pub enum TypeRef {
+    Tuple(Vec<TypeRef>),
+    Named { name: Token, generics: Vec<TypeRef> },
     Ident(Token),
     Understood, // 等待推导的类型
 }
@@ -58,15 +56,20 @@ pub enum ExprNode {
     Literal(Token),
     Identifier {
         ident: Token,
-        generics: Option<GenericArg>,
+        generics: Option<Vec<TypeRef>>,
     },
     Try(Box<ExprNode>),    // ?
     Unpack(Box<ExprNode>), // !
     Tuple(Vec<ExprNode>),
+    As {
+        token: Token,
+        src: Box<ExprNode>,
+        target: TypeRef,
+    },
     Struct {
         name: Token,
         fields: Vec<(Token, ExprNode)>,
-        generics: Option<GenericArg>,
+        generics: Option<Vec<TypeRef>>,
     },
     Binary {
         token: Token,
@@ -83,12 +86,12 @@ pub enum ExprNode {
         // 枚举 / 函数调用
         call: Box<ExprNode>,
         args: Vec<ExprNode>,
-        generics: Option<Vec<GenericArg>>,
+        generics: Option<Vec<TypeRef>>,
     },
     Closure {
         // 闭包
         args: Vec<AstNode>,
-        ret: GenericArg,
+        ret: TypeRef,
         blk: AstNode,
     },
     IfPattern {
@@ -110,12 +113,12 @@ pub enum AstNode {
     },
     Define {
         name: Token,
-        type_name: Option<GenericArg>,
+        type_name: Option<TypeRef>,
     },
     DefineElse {
         token: Token,
         head: Pattern,
-        type_name: Option<GenericArg>,
+        type_name: Option<TypeRef>,
         vars: Option<Box<ExprNode>>,
         el_blk: Option<Box<AstNode>>,
     },
@@ -138,24 +141,24 @@ pub enum AstNode {
     },
     Block {
         body: Vec<AstNode>,
-        tail: Option<Box<ExprNode>>,
+        tail: Option<Box<AstNode>>,
     },
     Function {
         name: Token,
         generics: Option<Vec<Token>>,
-        constraint: Option<Vec<(Token, Vec<GenericArg>)>>,
-        ret_type: GenericArg,
+        constraint: Option<Vec<(Token, Vec<TypeRef>)>>,
+        ret_type: TypeRef,
         args: Vec<AstNode>,
         block: Box<AstNode>,
     },
     Expr(Box<ExprNode>),
     EnumDefine {
         name: Token,
-        variants: Vec<(Token, Vec<GenericArg>)>,
+        variants: Vec<(Token, Vec<TypeRef>)>,
     },
     StructDefine {
         name: Token,
         generics: Option<Vec<Token>>,
-        fields: Vec<(Token, GenericArg)>,
+        fields: Vec<(Token, TypeRef)>,
     },
 }

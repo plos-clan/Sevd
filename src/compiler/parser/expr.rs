@@ -1,11 +1,11 @@
 use crate::compiler::com_error::ParserError;
 use crate::compiler::com_error::ParserError::{IllegalExpression, IllegalKey};
-use crate::compiler::ir::{AstNode, ExprNode};
+use crate::compiler::ir::{AstNode, ExprNode, TypeRef};
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
-use crate::compiler::parser::Parser;
 use crate::compiler::parser::block::block_parser;
 use crate::compiler::parser::generics::parser_type_ref;
 use crate::compiler::parser::ifs::if_parser;
+use crate::compiler::parser::Parser;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum ExprType {
@@ -38,15 +38,15 @@ impl<'a, 'b> ExprParser<'a, 'b> {
 
     fn prefix_binding_power(operator: &OperatorEnum) -> ((), u8) {
         match operator {
-            OperatorEnum::Plus | OperatorEnum::Minus => ((), 21),
-            OperatorEnum::Not | OperatorEnum::Add | OperatorEnum::Sub => ((), 23),
+            OperatorEnum::Plus | OperatorEnum::Minus |
+            OperatorEnum::Not | OperatorEnum::Add | OperatorEnum::Sub => ((), 25),
             _ => ((), 0),
         }
     }
 
     fn postfix_binding_power(token: &Token) -> Option<(u8, ())> {
         match token.get_type() {
-            TokenType::Operator(OperatorEnum::Plus | OperatorEnum::Minus) => Some((21, ())),
+            TokenType::Operator(OperatorEnum::Plus | OperatorEnum::Minus) => Some((25, ())),
             TokenType::Operator(OperatorEnum::Question | OperatorEnum::Not) => Some((26, ())),
             TokenType::Lp('[' | '(' | '{') => Some((27, ())),
             _ => None,
@@ -73,10 +73,14 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 | OperatorEnum::Less => Some((15, 16)),
                 OperatorEnum::BitLeft | OperatorEnum::BitRight => Some((17, 18)),
                 OperatorEnum::Add | OperatorEnum::Sub => Some((19, 20)),
-                OperatorEnum::Mul | OperatorEnum::Div | OperatorEnum::Mod => Some((24, 25)),
+                OperatorEnum::Mul | OperatorEnum::Div | OperatorEnum::Mod => Some((21, 22)),
                 OperatorEnum::Ref => Some((30, 29)),
                 _ => None,
             };
+        }
+
+        if let TokenType::As = token.get_type() {
+            return Some((23, 24));
         }
         None
     }
@@ -113,12 +117,18 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         let mut token = self.get_token()?;
 
         let generics = if let TokenType::Operator(OperatorEnum::Less) = token.get_type() {
-            let ga = parser_type_ref(self.parser)?;
-            token = self.get_token()?;
-            let TokenType::Operator(OperatorEnum::Big) = token.get_type() else {
-                return Err(ParserError::Expected(token, '>'));
-            };
-            Some(ga)
+            let mut generics_tr = Vec::new();
+            loop {
+                let ga = parser_type_ref(self.parser)?;
+                generics_tr.push(ga);
+                token = self.get_token()?;
+                match token.get_type() {
+                    TokenType::Operator(OperatorEnum::Big) => break,
+                    TokenType::Operator(OperatorEnum::Comma) => continue,
+                    _=> return Err(ParserError::Expected(token, '>')),
+                }
+            }
+            Some(generics_tr)
         } else {
             self.parser.cache = Some(token);
             None
@@ -236,7 +246,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
     fn check_operator(token: &Token) -> bool {
         matches!(
             token.get_type(),
-            TokenType::Operator(_) | TokenType::Lp('[' | '(')
+            TokenType::Operator(_) | TokenType::Lp('[' | '(') | TokenType::As
         )
     }
 
@@ -316,16 +326,33 @@ impl<'a, 'b> ExprParser<'a, 'b> {
 
                 // 二元表达式解析
                 let rhs = self.expr_bp(r_bp, depth)?;
-                if let TokenType::Operator(operator) = token.get_type() {
-                    expr_tree = ExprNode::Binary {
-                        token: token.clone(),
-                        operator: *operator,
-                        left: Box::new(expr_tree),
-                        right: Box::new(rhs),
-                    };
-                    continue;
+                
+                match token.get_type() {
+                    TokenType::Operator(operator) => {
+                        expr_tree = ExprNode::Binary {
+                            token: token.clone(),
+                            operator: *operator,
+                            left: Box::new(expr_tree),
+                            right: Box::new(rhs),
+                        };
+                        continue;
+                    },
+                    TokenType::As => {
+                        let ExprNode::Identifier { ident, generics } = rhs else {
+                            return Err(ParserError::ExpectedToken(token, TokenType::Identifier));
+                        };
+                        expr_tree = ExprNode::As {
+                            token: token.clone(),
+                            src: Box::new(expr_tree),
+                            target: TypeRef::Named {
+                                name: ident,
+                                generics: generics.unwrap_or(vec![]),
+                            }
+                        };
+                        continue;
+                    },
+                    _=> return Err(IllegalExpression(token)),
                 }
-                return Err(IllegalExpression(token));
             }
             self.parser.cache = Some(token);
             break;

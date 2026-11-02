@@ -28,22 +28,14 @@ pub fn block_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
     let mut nodes: Vec<AstNode> = vec![];
     let mut token = parser.get_token()?;
     let TokenType::Lp('{') = token.get_type() else {
+        let err = token.clone();
         let (stmt, terminator) = parse_statement(parser, token)?;
         if matches!(terminator, ExprTerminator::BlockEnd) {
-            let AstNode::Expr(expr) = stmt.unwrap() else {
-                unreachable!()
-            };
-            return Ok(AstNode::Block {
-                body: nodes,
-                tail: Some(expr.clone()),
-            });
-        }
-        if let Some(stmt) = stmt {
-            nodes.push(stmt);
-        }
+            return Err(ParserError::IllegalStmtEnd(err));
+        };
         return Ok(AstNode::Block {
             body: nodes,
-            tail: None,
+            tail: Some(Box::new(stmt.unwrap())),
         });
     };
     let mut tail = None;
@@ -54,10 +46,7 @@ pub fn block_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
         }
         let (stmt, terminator) = parse_statement(parser, token)?;
         if matches!(terminator, ExprTerminator::BlockEnd) {
-            let AstNode::Expr(expr) = stmt.unwrap() else {
-                unreachable!()
-            };
-            tail = Some(expr.clone());
+            tail = Some(Box::new(stmt.unwrap()));
             break;
         }
         if let Some(node) = stmt {
