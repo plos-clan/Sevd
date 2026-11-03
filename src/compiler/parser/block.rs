@@ -5,6 +5,7 @@ use crate::compiler::parser::Parser;
 use crate::compiler::parser::define::var_parser;
 use crate::compiler::parser::expr::{ExprTerminator, ExprType, get_of_end_or_block_end_expr};
 use crate::compiler::parser::fors::for_parser;
+use crate::compiler::parser::returns::return_parser;
 use crate::compiler::parser::whiles::while_parser;
 
 fn parse_statement(
@@ -15,6 +16,7 @@ fn parse_statement(
         TokenType::Let => Ok((Some(var_parser(parser, token)?), ExprTerminator::End)),
         TokenType::For => Ok((Some(for_parser(parser)?), ExprTerminator::End)),
         TokenType::While => Ok((Some(while_parser(parser)?), ExprTerminator::End)),
+        TokenType::Return => Ok((Some(return_parser(parser)?), ExprTerminator::End)),
         TokenType::End => Ok((None, ExprTerminator::End)),
         _ => {
             parser.cache = Some(token.clone());

@@ -152,6 +152,7 @@ pub enum AstNode {
         block: Box<AstNode>,
     },
     Expr(Box<ExprNode>),
+    Return(Box<ExprNode>),
     EnumDefine {
         name: Token,
         variants: Vec<(Token, Vec<TypeRef>)>,

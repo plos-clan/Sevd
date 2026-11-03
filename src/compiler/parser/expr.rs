@@ -2,10 +2,10 @@ use crate::compiler::com_error::ParserError;
 use crate::compiler::com_error::ParserError::{IllegalExpression, IllegalKey};
 use crate::compiler::ir::{AstNode, ExprNode, TypeRef};
 use crate::compiler::lexer::{OperatorEnum, Token, TokenType};
+use crate::compiler::parser::Parser;
 use crate::compiler::parser::block::block_parser;
 use crate::compiler::parser::generics::parser_type_ref;
 use crate::compiler::parser::ifs::if_parser;
-use crate::compiler::parser::Parser;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum ExprType {
@@ -38,8 +38,11 @@ impl<'a, 'b> ExprParser<'a, 'b> {
 
     fn prefix_binding_power(operator: &OperatorEnum) -> ((), u8) {
         match operator {
-            OperatorEnum::Plus | OperatorEnum::Minus |
-            OperatorEnum::Not | OperatorEnum::Add | OperatorEnum::Sub => ((), 25),
+            OperatorEnum::Plus
+            | OperatorEnum::Minus
+            | OperatorEnum::Not
+            | OperatorEnum::Add
+            | OperatorEnum::Sub => ((), 25),
             _ => ((), 0),
         }
     }
@@ -113,10 +116,19 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         Ok(fields)
     }
 
+    /// `depth` 用于判断是否是结构体定义语法, 只有在最外层出现 ident{} 类似语法时才判定为结构体定义
     fn parse_ident(&mut self, ident: Token, depth: usize) -> Result<ExprNode, ParserError> {
         let mut token = self.get_token()?;
 
-        let generics = if let TokenType::Operator(OperatorEnum::Less) = token.get_type() {
+        // foo!<i32>() 泛型定义解析
+        let mut try_generics = false;
+        if let TokenType::Operator(OperatorEnum::Not) = token.get_type() {
+            token = self.get_token()?;
+            try_generics = true
+        }
+        let generics = if let TokenType::Operator(OperatorEnum::Less) = token.get_type()
+            && try_generics
+        {
             let mut generics_tr = Vec::new();
             loop {
                 let ga = parser_type_ref(self.parser)?;
@@ -125,7 +137,14 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 match token.get_type() {
                     TokenType::Operator(OperatorEnum::Big) => break,
                     TokenType::Operator(OperatorEnum::Comma) => continue,
-                    _=> return Err(ParserError::Expected(token, '>')),
+                    TokenType::Operator(OperatorEnum::BitRight) => {
+                        self.parser.cache = Some(Token::new(
+                            token.get_span().clone(),
+                            TokenType::Operator(OperatorEnum::Big),
+                        ));
+                        break;
+                    }
+                    _ => return Err(ParserError::Expected(token, '>')),
                 }
             }
             Some(generics_tr)
@@ -326,7 +345,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
 
                 // 二元表达式解析
                 let rhs = self.expr_bp(r_bp, depth)?;
-                
+
                 match token.get_type() {
                     TokenType::Operator(operator) => {
                         expr_tree = ExprNode::Binary {
@@ -336,7 +355,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                             right: Box::new(rhs),
                         };
                         continue;
-                    },
+                    }
                     TokenType::As => {
                         let ExprNode::Identifier { ident, generics } = rhs else {
                             return Err(ParserError::ExpectedToken(token, TokenType::Identifier));
@@ -347,11 +366,11 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                             target: TypeRef::Named {
                                 name: ident,
                                 generics: generics.unwrap_or(vec![]),
-                            }
+                            },
                         };
                         continue;
-                    },
-                    _=> return Err(IllegalExpression(token)),
+                    }
+                    _ => return Err(IllegalExpression(token)),
                 }
             }
             self.parser.cache = Some(token);

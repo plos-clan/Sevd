@@ -215,6 +215,12 @@ pub struct Token {
 }
 
 impl Token {
+    
+    pub fn new(span: Span, t_type: TokenType) -> Self {
+        Self {
+            span, t_type
+        }
+    }
     pub fn no_span_new(types: TokenType) -> Self {
         Self {
             span: Span::new_full(String::new()),

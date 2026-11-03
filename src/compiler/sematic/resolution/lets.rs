@@ -15,8 +15,7 @@ pub fn resolution_global(
         type_name,
         vars,
         el_blk,
-    } = node
-    else {
+    } = node else {
         unreachable!()
     };
     let Some(vars) = vars else {

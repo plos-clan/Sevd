@@ -29,6 +29,7 @@ pub fn parser_generics(parser: &mut Parser) -> Result<Vec<Token>, ParserError> {
 pub fn parser_type_ref(parser: &mut Parser) -> Result<TypeRef, ParserError> {
     let mut token = parser.get_token()?;
 
+    // 用于判断元组
     if let TokenType::Lp('(') = token.get_type() {
         let mut elements = vec![];
         loop {
@@ -53,7 +54,12 @@ pub fn parser_type_ref(parser: &mut Parser) -> Result<TypeRef, ParserError> {
     };
     let name = token;
     token = parser.get_token()?;
-    if let TokenType::Operator(OperatorEnum::Less) = token.get_type() {
+    let mut try_generics = false;
+    if let TokenType::Operator(OperatorEnum::Not) = token.get_type() {
+        token = parser.get_token()?;
+        try_generics = true
+    }
+    if let TokenType::Operator(OperatorEnum::Less) = token.get_type() && try_generics {
         let mut generics = vec![];
         loop {
             let ga = parser_type_ref(parser)?;
@@ -62,6 +68,13 @@ pub fn parser_type_ref(parser: &mut Parser) -> Result<TypeRef, ParserError> {
             match token.get_type() {
                 TokenType::Operator(OperatorEnum::Comma) => continue,
                 TokenType::Operator(OperatorEnum::Big) => break,
+                TokenType::Operator(OperatorEnum::BitRight) => {
+                    parser.cache = Some(Token::new(
+                        token.get_span().clone(),
+                        TokenType::Operator(OperatorEnum::Big),
+                    ));
+                    break;
+                }
                 _ => return Err(ParserError::Expected(token, '>')),
             }
         }

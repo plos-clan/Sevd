@@ -10,6 +10,7 @@ mod ifs;
 mod import;
 mod pattern;
 mod whiles;
+mod returns;
 
 use super::ir::AstNode;
 use super::symtbl::SymbolTable;
