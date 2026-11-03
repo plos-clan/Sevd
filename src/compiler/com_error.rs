@@ -42,7 +42,7 @@ pub enum SematicError {
 fn print_infomation(file: &SourceFile, message: String, token: Token) {
     eprintln!("SyntaxError ({}): {message}", file.name);
     let start = token.get_span().start();
-    let (line, column) = start.line_column();
+    let (line, column) = (start.line(), start.column());
     let line_number = line.max(1) as usize;
     let line_index = line.saturating_sub(1) as usize;
     let line_text = file.data.source().lines().nth(line_index).unwrap_or("");

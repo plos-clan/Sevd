@@ -215,7 +215,7 @@ pub struct Token {
 }
 
 impl Token {
-    
+
     pub fn new(span: Span, t_type: TokenType) -> Self {
         Self {
             span, t_type
@@ -229,7 +229,7 @@ impl Token {
     }
 
     pub fn line_column(&self) -> (u32, u32) {
-        self.span.line_column()
+        (self.span.line(), self.span.column())
     }
 
     pub fn is_eof(&self) -> bool {
