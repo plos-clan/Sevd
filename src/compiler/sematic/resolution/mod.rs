@@ -106,6 +106,12 @@ fn semantic_item(
         return Err(SematicError::InvalidAnnotationTarget(token.clone()));
     };
     match node {
+        AstNode::Import { name, module_id } => {
+            if let Some((token, _)) = attributes.first() {
+                return Err(SematicError::InvalidAnnotationTarget(token.clone()));
+            }
+            Ok(Some(HastItem::Import { name, module_id }))
+        }
         AstNode::Function { .. } => Ok(Some(generic_resolution(node, attributes)?)),
         AstNode::StructDefine {
             name,

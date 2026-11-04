@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::compiler::Compiler;
 use crate::compiler::ir::tnode::TypeKind;
 use crate::compiler::lexer::Token;
+use crate::compiler::module::ModuleId;
 
 #[derive(Debug, Clone)]
 pub enum ScopeType {
@@ -43,7 +44,7 @@ impl HoleTable {
 }
 
 #[derive(Debug, Clone)]
-pub struct  Scope {
+pub struct Scope {
     bindings: Vec<(Token, TypeKind)>,
     table: HoleTable,
     sty: ScopeType,
@@ -65,14 +66,14 @@ impl Scope {
     pub fn get_mut_hole(&mut self) -> &mut HoleTable {
         &mut self.table
     }
-    
+
     pub fn find_binding(&self, name: &str) -> Option<&(Token, TypeKind)> {
-        self.bindings.iter().find(|(token, _)| {
-            token.get_span().text() == name
-        })
+        self.bindings
+            .iter()
+            .find(|(token, _)| token.get_span().text() == name)
     }
 
-    pub fn create_binding(&mut self,token: Token, sty: TypeKind) {
+    pub fn create_binding(&mut self, token: Token, sty: TypeKind) {
         self.bindings.push((token, sty));
     }
 }
@@ -81,14 +82,16 @@ impl Scope {
 #[derive(Debug, Clone)]
 pub struct SymbolTable<'a> {
     compiler: &'a Compiler,
+    current_module: ModuleId,
     scopes: Vec<Scope>,
 }
 
 impl<'a> SymbolTable<'a> {
-    pub fn new(compiler: &'a Compiler) -> Self {
+    pub fn new(compiler: &'a Compiler, current_module: ModuleId) -> Self {
         SymbolTable {
             scopes: vec![Scope::new(ScopeType::Root)],
             compiler,
+            current_module,
         }
     }
 
@@ -106,5 +109,9 @@ impl<'a> SymbolTable<'a> {
 
     pub fn compiler(&self) -> &'a Compiler {
         self.compiler
+    }
+
+    pub fn current_module(&self) -> ModuleId {
+        self.current_module
     }
 }

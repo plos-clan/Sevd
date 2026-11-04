@@ -3,8 +3,8 @@ pub mod hir;
 pub mod tnode;
 
 use super::lexer::OperatorEnum;
-use crate::compiler::SourceFile;
 use crate::compiler::lexer::Token;
+use crate::compiler::module::ModuleId;
 
 #[derive(Debug, Clone)]
 pub enum MetaValue {
@@ -104,8 +104,8 @@ pub enum ExprNode {
 #[derive(Debug, Clone)]
 pub enum AstNode {
     Import {
-        name: Token,
-        file: Box<SourceFile>,
+        name: Vec<Token>,
+        module_id: ModuleId,
     },
     Annotation {
         name: Token,

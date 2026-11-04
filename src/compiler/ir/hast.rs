@@ -1,5 +1,6 @@
 use super::{AnnotationElement, AstNode, ExprNode, Pattern, TypeRef};
 use crate::compiler::lexer::{OperatorEnum, Token};
+use crate::compiler::module::ModuleId;
 
 #[derive(Debug, Clone)]
 pub enum HastExpr {
@@ -99,6 +100,7 @@ pub struct HastEnum {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum HastItem {
+    Import { name: Vec<Token>, module_id: ModuleId },
     Function(Box<HastFunction>),
     Global(Box<HastGlobal>),
     Struct(HastStruct),

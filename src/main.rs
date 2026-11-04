@@ -85,7 +85,10 @@ fn main() {
     let args = Args::parser();
 
     let mut compiler = Compiler::new(args.name.unwrap_or("default".to_string()));
-    compiler.add_files(args.input);
+    if let Err(error) = compiler.add_files(args.input) {
+        eprintln!("error: {error}");
+        exit(2);
+    }
 
     compiler.compile();
 }
