@@ -26,6 +26,8 @@ fn parse_statement(
     }
 }
 
+/// # Panics
+/// # Errors
 pub fn block_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
     let mut nodes: Vec<AstNode> = vec![];
     let mut token = parser.get_token()?;
@@ -34,7 +36,7 @@ pub fn block_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
         let (stmt, terminator) = parse_statement(parser, token)?;
         if matches!(terminator, ExprTerminator::BlockEnd) {
             return Err(ParserError::IllegalStmtEnd(err));
-        };
+        }
         return Ok(AstNode::Block {
             body: nodes,
             tail: Some(Box::new(stmt.unwrap())),

@@ -53,6 +53,7 @@ pub enum Pattern {
 
 #[derive(Debug, Clone)]
 pub enum ExprNode {
+    Error, // 语义分析错误占位节点
     Literal(Token),
     Identifier {
         ident: Token,

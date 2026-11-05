@@ -18,7 +18,7 @@ fn parse_args_in_paren(parser: &mut Parser) -> Result<Vec<Pattern>, ParserError>
 
         let sep = parser.get_token()?;
         match sep.get_type() {
-            TokenType::Operator(OperatorEnum::Comma) => continue,
+            TokenType::Operator(OperatorEnum::Comma) => {}
             TokenType::Lr(')') => {
                 parser.cache = Some(sep);
                 break;
@@ -83,7 +83,7 @@ fn parse_tuple(parser: &mut Parser) -> Result<Pattern, ParserError> {
 
             let sep = parser.get_token()?;
             match sep.get_type() {
-                TokenType::Operator(OperatorEnum::Comma) => continue,
+                TokenType::Operator(OperatorEnum::Comma) => {}
                 TokenType::Lr(')') => break,
                 _ => {
                     return Err(ParserError::ExpectedToken(sep, TokenType::Lr(')')));

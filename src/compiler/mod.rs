@@ -26,6 +26,7 @@ pub struct Compiler {
 }
 
 impl Compiler {
+    #[must_use]
     pub fn new(name: String) -> Self {
         Self {
             alloc_id: 1,
@@ -34,14 +35,14 @@ impl Compiler {
         }
     }
 
+    #[must_use]
     pub fn normalize_path(path_str: &str) -> Vec<String> {
         Path::new(path_str)
             .components()
             .filter_map(|component| match component {
-                Component::CurDir => None,
                 Component::Normal(segment) => Some(segment.to_string_lossy().into_owned()),
                 Component::ParentDir => Some("..".to_string()),
-                Component::RootDir | Component::Prefix(_) => None,
+                Component::RootDir | Component::CurDir | Component::Prefix(_) => None,
             })
             .collect()
     }
@@ -74,22 +75,38 @@ impl Compiler {
         module
     }
 
-    fn compile_submodules(compiler: &Compiler, module: &Module, path: &mut Vec<String>) {
-        if let Some(file) = &module.file {
+    fn compile_submodules(&mut self, module_id: ModuleId, path: &mut Vec<String>) {
+        // End the tree borrow before semantic analysis mutably borrows the compiler.
+        let (file, children) = {
+            let module = self.module(module_id).expect("compiling module must exist");
+            let children: Vec<_> = module
+                .modules
+                .iter()
+                .map(|child| (child.id, child.name.clone()))
+                .collect();
+            (module.file.clone(), children)
+        };
+        if let Some(file) = file {
             println!("Compiling {} - {}", file.name, path.join("."));
-            file.compiler_header(compiler, module.id);
+            file.compiler_header(self, module_id);
         }
-        for child in &module.modules {
-            path.push(child.name.clone());
-            Self::compile_submodules(compiler, child, path);
+        for (child_id, child_name) in children {
+            path.push(child_name);
+            self.compile_submodules(child_id, path);
             path.pop();
         }
     }
 
+    /// # Errors
+    ///
+    /// `Err` read file I/O error
     pub fn add_file(&mut self, path: &str) -> io::Result<()> {
         self.add_files(vec![String::from(path)])
     }
 
+    /// # Errors
+    ///
+    /// `Err` read file I/O error
     pub fn add_files(&mut self, paths: Vec<String>) -> io::Result<()> {
         for path in paths {
             let normalized_path = Self::source_path(&path)?;
@@ -99,7 +116,6 @@ impl Compiler {
         Ok(())
     }
 
-    // Source paths are relative to the working directory, our current source root.
     fn source_path(path: &str) -> io::Result<Vec<String>> {
         let cwd = std::env::current_dir()?;
         let input = Path::new(path);
@@ -181,7 +197,7 @@ impl Compiler {
         Ok(())
     }
 
-    /// Resolve an absolute module path; `this` is an alias for the compiling root.
+    #[must_use]
     pub fn resolve_module(&self, path: &[String]) -> Option<&Module> {
         let (name, rest) = path.split_first()?;
         let root = if name == "this" || *name == self.compiling.name {
@@ -192,12 +208,22 @@ impl Compiler {
         root.find(rest)
     }
 
+    #[must_use]
     pub fn module(&self, id: ModuleId) -> Option<&Module> {
         self.compiling
             .find_by_id(id)
             .or_else(|| self.mods.iter().find_map(|module| module.find_by_id(id)))
     }
 
+    pub fn module_mut(&mut self, id: ModuleId) -> Option<&mut Module> {
+        self.compiling.find_by_id_mut(id).or_else(|| {
+            self.mods
+                .iter_mut()
+                .find_map(|module| module.find_by_id_mut(id))
+        })
+    }
+
+    #[must_use]
     pub fn get_module_path(&self, id: ModuleId) -> Option<Vec<String>> {
         self.compiling.get_module_path_by_id(id).or_else(|| {
             self.mods
@@ -206,9 +232,9 @@ impl Compiler {
         })
     }
 
-    pub fn compile(&self) {
+    pub fn compile(&mut self) {
         let mut path = vec![self.compiling.name.clone()];
-        Self::compile_submodules(self, &self.compiling, &mut path);
+        self.compile_submodules(self.compiling.id, &mut path);
     }
 }
 
@@ -220,11 +246,12 @@ pub struct SourceFile {
 }
 
 impl SourceFile {
+    #[must_use]
     pub fn module_name(&self) -> Option<&str> {
         Path::new(&self.name).file_stem()?.to_str()
     }
 
-    pub fn compiler_header(&self, compiler: &Compiler, module_id: ModuleId) {
+    pub fn compiler_header(&self, compiler: &mut Compiler, module_id: ModuleId) {
         let mut lex = LexerAnalysis::new(self);
         let mut parser = Parser::new(&mut lex);
         let mut symtbl = SymbolTable::new(compiler, module_id);

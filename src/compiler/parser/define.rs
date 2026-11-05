@@ -78,7 +78,7 @@ fn parser_enum_fields(parser: &mut Parser) -> Result<Vec<TypeRef>, ParserError> 
         enum_fields.push(generic);
         let token = parser.get_token()?;
         match token.get_type() {
-            TokenType::Operator(OperatorEnum::Comma) => continue,
+            TokenType::Operator(OperatorEnum::Comma) => {}
             TokenType::Lr(')') => break,
             _ => return Err(ParserError::Expected(token, ')')),
         }
@@ -148,7 +148,7 @@ fn field_parser(parser: &mut Parser) -> Result<Vec<(Token, TypeRef)>, ParserErro
         fields.push((name, generic));
         token = parser.get_token()?;
         match token.get_type() {
-            TokenType::Operator(OperatorEnum::Comma) => continue,
+            TokenType::Operator(OperatorEnum::Comma) => {}
             TokenType::Lr('}') => break,
             _ => return Err(ParserError::Expected(token, '}')),
         }

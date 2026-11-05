@@ -1,5 +1,5 @@
-use std::fmt::Display;
 use crate::compiler::lexer::Token;
+use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum NumberKind {
@@ -94,13 +94,14 @@ impl Display for TypeKind {
             TypeKind::Number(NumberKind::U32) => write!(f, "u32"),
             TypeKind::Number(NumberKind::U64) => write!(f, "u64"),
             TypeKind::Number(NumberKind::F32) => write!(f, "f32"),
-            TypeKind::Number(NumberKind::F64 )=> write!(f, "f64"),
+            TypeKind::Number(NumberKind::F64) => write!(f, "f64"),
             TypeKind::Nothing => write!(f, "nothing"),
             TypeKind::Number(NumberKind::Number) => write!(f, "number"),
         }
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct GenericParam {
     name: Token,

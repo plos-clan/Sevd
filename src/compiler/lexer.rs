@@ -37,6 +37,15 @@ pub struct LexerAnalysis<'a> {
     pos: TextSize,
 }
 
+struct NumberLiteral {
+    text: String,
+    suffix: String,
+    has_dot: bool,
+    start: TextSize,
+    // Lookahead can advance the cursor beyond the literal's source span.
+    end: TextSize,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenNumber {
     I8(i8),
@@ -94,7 +103,7 @@ pub enum OperatorEnum {
 
 impl Display for OperatorEnum {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self { 
+        match self {
             OperatorEnum::Ref => write!(f, "."),
             OperatorEnum::Set => write!(f, "="),
             OperatorEnum::NotEq => write!(f, "!="),
@@ -175,9 +184,7 @@ impl Display for TokenType {
         match self {
             TokenType::Eof => f.write_str("<eof>"),
             TokenType::Identifier => f.write_str("<identifier>"),
-            TokenType::Number(token_number) => {
-                f.write_fmt(format_args!("number {token_number:?}"))
-            }
+            TokenType::Number(token_number) => f.write_fmt(format_args!("number {token_number:?}")),
             Operator(operator_enum) => f.write_fmt(format_args!("operator {operator_enum:?}")),
             TokenType::String(need) => f.write_fmt(format_args!("\"{need}\"")),
             TokenType::Char(char) => f.write_fmt(format_args!("'{char:?}'")),
@@ -215,12 +222,12 @@ pub struct Token {
 }
 
 impl Token {
-
+    #[must_use]
     pub fn new(span: Span, t_type: TokenType) -> Self {
-        Self {
-            span, t_type
-        }
+        Self { span, t_type }
     }
+
+    #[must_use]
     pub fn no_span_new(types: TokenType) -> Self {
         Self {
             span: Span::new_full(String::new()),
@@ -228,24 +235,29 @@ impl Token {
         }
     }
 
+    #[must_use]
     pub fn line_column(&self) -> (u32, u32) {
         (self.span.line(), self.span.column())
     }
 
+    #[must_use]
     pub fn is_eof(&self) -> bool {
         self.t_type == TokenType::Eof
     }
 
+    #[must_use]
     pub fn get_span(&self) -> &Span {
         &self.span
     }
 
+    #[must_use]
     pub fn get_type(&self) -> &TokenType {
         &self.t_type
     }
 }
 
 impl<'a> LexerAnalysis<'a> {
+    #[must_use]
     pub fn new(file: &'a SourceFile) -> LexerAnalysis<'a> {
         Self {
             file,
@@ -254,7 +266,7 @@ impl<'a> LexerAnalysis<'a> {
         }
     }
 
-    fn match_keyword(&self, identifier_name: &str) -> TokenType {
+    fn match_keyword(identifier_name: &str) -> TokenType {
         for (keyword, token_type) in &KEYWORDS {
             if identifier_name == *keyword {
                 return token_type.clone();
@@ -292,215 +304,185 @@ impl<'a> LexerAnalysis<'a> {
             }
         }
         let span = self.make_span(start, end);
-        let t_type = self.match_keyword(span.text());
+        let t_type = Self::match_keyword(span.text());
         Token { span, t_type }
     }
 
+    fn number_error(&self, start: TextSize, end: TextSize, message: impl Into<String>) -> LexError {
+        LexError::InvalidToken(
+            message.into(),
+            Token::new(
+                self.make_span(start, end),
+                TokenType::Number(TokenNumber::F32(0.0)),
+            ),
+        )
+    }
+
     fn read_suffix(&mut self, prefix: char, start: TextSize) -> Result<String, LexError> {
-        let mut suffix = String::new();
-        suffix.push(prefix);
-
-        match prefix {
-            'i' | 'u' => {
-                let first = self.next_char();
-                suffix.push(first);
-
-                match first {
-                    '8' => {}
-                    '1' | '3' | '6' => {
-                        let second = self.next_char();
-                        suffix.push(second);
-
-                        match (first, second) {
-                            ('1', '6') | ('3', '2') | ('6', '4') => {}
-                            _ => {
-                                return Err(LexError::InvalidToken(
-                                    format!("unsupported integer suffix: {suffix}"),
-                                    Token {
-                                        span: self.make_span(start, self.pos),
-                                        t_type: TokenType::Number(TokenNumber::F32(0.0)),
-                                    },
-                                ));
-                            }
-                        }
-                    }
-                    _ => {
-                        return Err(LexError::InvalidToken(
-                            format!("unsupported integer suffix: {suffix}"),
-                            Token {
-                                span: self.make_span(start, self.pos),
-                                t_type: TokenType::Number(TokenNumber::F32(0.0)),
-                            },
-                        ));
-                    }
-                }
-            }
-            'f' => {
-                let first = self.next_char();
-                suffix.push(first);
-
-                match first {
-                    '3' => {
-                        let second = self.next_char();
-                        suffix.push(second);
-                        if second != '2' {
-                            return Err(LexError::InvalidToken(
-                                format!("unsupported float suffix: {suffix}"),
-                                Token {
-                                    span: self.make_span(start, self.pos),
-                                    t_type: TokenType::Number(TokenNumber::F32(0.0)),
-                                },
-                            ));
-                        }
-                    }
-                    '6' => {
-                        let second = self.next_char();
-                        suffix.push(second);
-                        if second != '4' {
-                            return Err(LexError::InvalidToken(
-                                format!("unsupported float suffix: {suffix}"),
-                                Token {
-                                    span: self.make_span(start, self.pos),
-                                    t_type: TokenType::Number(TokenNumber::F32(0.0)),
-                                },
-                            ));
-                        }
-                    }
-                    _ => {
-                        return Err(LexError::InvalidToken(
-                            format!("unsupported float suffix: {suffix}"),
-                            Token {
-                                span: self.make_span(start, self.pos),
-                                t_type: TokenType::Number(TokenNumber::F32(0.0)),
-                            },
-                        ));
-                    }
-                }
-            }
+        let kind = match prefix {
+            'i' | 'u' => "integer",
+            'f' => "float",
             _ => unreachable!(),
-        }
+        };
+        let mut suffix = String::from(prefix);
+        let first = self.next_char();
+        suffix.push(first);
 
+        let valid = match (prefix, first) {
+            ('i' | 'u', '8') => true,
+            ('i' | 'u', '1' | '3' | '6') | ('f', '3' | '6') => {
+                let second = self.next_char();
+                suffix.push(second);
+                matches!((first, second), ('1', '6') | ('3', '2') | ('6', '4'))
+            }
+            _ => false,
+        };
+        if !valid {
+            return Err(self.number_error(
+                start,
+                self.pos,
+                format!("unsupported {kind} suffix: {suffix}"),
+            ));
+        }
         Ok(suffix)
     }
 
     fn build_number(&mut self) -> Result<Token, LexError> {
-        let first_char = self.next_char();
-        let start = self.pos - first_char.text_len();
-        let mut end = self.pos;
-        let mut literal = String::new();
-        let mut suffix = String::new();
-        let mut saw_dot = false;
+        let first = self.next_char();
+        let mut literal = NumberLiteral {
+            text: String::from(first),
+            suffix: String::new(),
+            has_dot: first == '.',
+            start: self.pos - first.text_len(),
+            end: self.pos,
+        };
 
-        if first_char == '.' {
+        if first == '.' {
             let next = self.next_char();
             if !next.is_ascii_digit() {
                 if next != '\0' {
                     self.cache = Some(next);
                 }
-                return Ok(Token {
-                    span: self.make_span(start, start + first_char.text_len()),
-                    t_type: Operator(OperatorEnum::Ref),
-                });
+                return Ok(Token::new(
+                    self.make_span(literal.start, literal.end),
+                    Operator(OperatorEnum::Ref),
+                ));
             }
-
-            saw_dot = true;
-            literal.push('0');
-            literal.push('.');
-            literal.push(next);
-            end = self.pos;
-        } else {
-            literal.push(first_char);
+            literal.text.insert(0, '0');
+            literal.text.push(next);
+            literal.end = self.pos;
         }
 
+        self.scan_number_tail(&mut literal)?;
+        let number = Self::parse_number_value(&literal.text, &literal.suffix, literal.has_dot)
+            .map_err(|message| self.number_error(literal.start, literal.end, message))?;
+        Ok(Token::new(
+            self.make_span(literal.start, literal.end),
+            TokenType::Number(number),
+        ))
+    }
+
+    fn scan_number_tail(&mut self, literal: &mut NumberLiteral) -> Result<(), LexError> {
         loop {
             let before = self.pos;
             let ch = self.next_char();
-
             match ch {
                 '\0' => break,
                 c if c.is_ascii_digit() => {
-                    literal.push(c);
-                    end = self.pos;
+                    literal.text.push(c);
+                    literal.end = self.pos;
                 }
-                '.' if !saw_dot => {
-                    saw_dot = true;
-                    literal.push('.');
-                    end = self.pos;
+                '.' if !literal.has_dot => {
+                    literal.has_dot = true;
+                    literal.text.push('.');
+                    literal.end = self.pos;
                 }
                 'i' | 'u' | 'f' => {
-                    suffix = self.read_suffix(ch, start)?;
-                    end = self.pos;
+                    literal.suffix = self.read_suffix(ch, literal.start)?;
+                    literal.end = self.pos;
                     break;
                 }
                 '_' => {
                     let next = self.next_char();
                     match next {
                         d if d.is_ascii_digit() => {
-                            literal.push(d);
-                            end = self.pos;
+                            literal.text.push(d);
+                            literal.end = self.pos;
                         }
                         'i' | 'u' | 'f' => {
-                            suffix = self.read_suffix(next, start)?;
-                            end = self.pos;
+                            literal.suffix = self.read_suffix(next, literal.start)?;
+                            literal.end = self.pos;
                             break;
                         }
                         '\0' => break,
                         other => {
                             self.cache = Some(other);
-                            end = before;
+                            literal.end = before;
                             break;
                         }
                     }
                 }
                 other => {
                     self.cache = Some(other);
-                    end = before;
+                    literal.end = before;
                     break;
                 }
             }
         }
+        Ok(())
+    }
 
-        let is_float = saw_dot || suffix.starts_with('f');
-        let number = if is_float {
-            match suffix.as_str() {
-                "" | "f32" => TokenNumber::F32(literal.parse::<f32>().unwrap()),
-                "f64" => TokenNumber::F64(literal.parse::<f64>().unwrap()),
-                _ => {
-                    return Err(LexError::InvalidToken(
-                        format!("unsupported float suffix: {suffix}"),
-                        Token {
-                            span: self.make_span(start, self.pos),
-                            t_type: TokenType::Number(TokenNumber::F32(0.0)),
-                        },
-                    ));
-                }
+    fn parse_number_value(text: &str, suffix: &str, has_dot: bool) -> Result<TokenNumber, String> {
+        let number = if has_dot || suffix.starts_with('f') {
+            match suffix {
+                "" | "f32" => text
+                    .parse::<f32>()
+                    .map(TokenNumber::F32)
+                    .map_err(|err| err.to_string()),
+                "f64" => text
+                    .parse::<f64>()
+                    .map(TokenNumber::F64)
+                    .map_err(|err| err.to_string()),
+                _ => return Err(format!("unsupported float suffix: {suffix}")),
             }
         } else {
-            match suffix.as_str() {
-                "" | "i32" => TokenNumber::I32(literal.parse::<i32>().unwrap()),
-                "i8" => TokenNumber::I8(literal.parse::<i8>().unwrap()),
-                "i16" => TokenNumber::I16(literal.parse::<i16>().unwrap()),
-                "i64" => TokenNumber::I64(literal.parse::<i64>().unwrap()),
-                "u8" => TokenNumber::U8(literal.parse::<u8>().unwrap()),
-                "u16" => TokenNumber::U16(literal.parse::<u16>().unwrap()),
-                "u32" => TokenNumber::U32(literal.parse::<u32>().unwrap()),
-                "u64" => TokenNumber::U64(literal.parse::<u64>().unwrap()),
-                _ => {
-                    return Err(LexError::InvalidToken(
-                        format!("unsupported integer suffix: {suffix}"),
-                        Token {
-                            span: self.make_span(start, self.pos),
-                            t_type: TokenType::Number(TokenNumber::F32(0.0)),
-                        },
-                    ));
-                }
+            match suffix {
+                "" | "i32" => text
+                    .parse::<i32>()
+                    .map(TokenNumber::I32)
+                    .map_err(|err| err.to_string()),
+                "i8" => text
+                    .parse::<i8>()
+                    .map(TokenNumber::I8)
+                    .map_err(|err| err.to_string()),
+                "i16" => text
+                    .parse::<i16>()
+                    .map(TokenNumber::I16)
+                    .map_err(|err| err.to_string()),
+                "i64" => text
+                    .parse::<i64>()
+                    .map(TokenNumber::I64)
+                    .map_err(|err| err.to_string()),
+                "u8" => text
+                    .parse::<u8>()
+                    .map(TokenNumber::U8)
+                    .map_err(|err| err.to_string()),
+                "u16" => text
+                    .parse::<u16>()
+                    .map(TokenNumber::U16)
+                    .map_err(|err| err.to_string()),
+                "u32" => text
+                    .parse::<u32>()
+                    .map(TokenNumber::U32)
+                    .map_err(|err| err.to_string()),
+                "u64" => text
+                    .parse::<u64>()
+                    .map(TokenNumber::U64)
+                    .map_err(|err| err.to_string()),
+                _ => return Err(format!("unsupported integer suffix: {suffix}")),
             }
         };
-
-        Ok(Token {
-            span: self.make_span(start, end),
-            t_type: TokenType::Number(number),
-        })
+        number.map_err(|err| format!("invalid numeric literal `{text}{suffix}`: {err}"))
     }
 
     fn build_string(&mut self, start: TextSize) -> Result<Token, LexError> {
@@ -575,12 +557,23 @@ impl<'a> LexerAnalysis<'a> {
         }
     }
 
-    fn build_two(
-        &mut self,
-        start: TextSize,
-        fir: OperatorEnum,
-        sec: OperatorEnum,
-    ) -> Token {
+    fn build_same(&mut self, start: TextSize, same: char) -> Token {
+        let c = self.next_char();
+        if c == same {
+            Token {
+                span: self.make_span(start, start),
+                t_type: Operator(OperatorEnum::Path),
+            }
+        } else {
+            self.cache = Some(c);
+            Token {
+                span: self.make_span(start, start),
+                t_type: Operator(OperatorEnum::Colon),
+            }
+        }
+    }
+
+    fn build_two(&mut self, start: TextSize, fir: OperatorEnum, sec: OperatorEnum) -> Token {
         let fist_char = self.next_char();
         match fist_char {
             '=' => Token {
@@ -618,10 +611,10 @@ impl<'a> LexerAnalysis<'a> {
                         if c == '/' {
                             break;
                         } else if c != '\0' {
-                            continue
+                            continue;
                         }
                     } else if c != '\0' {
-                        continue
+                        continue;
                     }
                     return Err(LexError::InvalidEof(Token {
                         span: self.make_span(start, self.pos),
@@ -644,6 +637,7 @@ impl<'a> LexerAnalysis<'a> {
         }
     }
 
+    /// # Errors lex error
     fn build_char(&mut self, start: TextSize) -> Result<Token, LexError> {
         let mut c = self.next_char();
         let out_c = match c {
@@ -685,14 +679,21 @@ impl<'a> LexerAnalysis<'a> {
         })
     }
 
-    pub fn get_token(&mut self) -> Result<Token, LexError> {
-        let (start_pos, start) = loop {
+    fn eliminate_empty_char(&mut self) -> (TextSize, char) {
+        loop {
             let start_pos = self.pos;
             let start = self.next_char();
             if !matches!(start, '\n' | '\t' | ' ') {
                 break (start_pos, start);
             }
-        };
+        }
+    }
+
+    /// # Errors
+    ///
+    /// `Err` has unknown token
+    pub fn get_token(&mut self) -> Result<Token, LexError> {
+        let (start_pos, start) = self.eliminate_empty_char();
 
         match start {
             '\0' => Ok(Token {
@@ -716,21 +717,7 @@ impl<'a> LexerAnalysis<'a> {
                 self.cache = Some(ch);
                 self.build_number()
             }
-            ':' => {
-                let c = self.next_char();
-                if c == ':' {
-                    Ok(Token {
-                        span: self.make_span(start_pos, start_pos),
-                        t_type: Operator(OperatorEnum::Path),
-                    })
-                } else {
-                    self.cache = Some(c);
-                    Ok(Token {
-                        span: self.make_span(start_pos, start_pos),
-                        t_type: Operator(OperatorEnum::Colon),
-                    })
-                }
-            }
+            ':' => Ok(self.build_same(start_pos, ':')),
             ',' => Ok(Token {
                 span: self.make_span(start_pos, start_pos),
                 t_type: Operator(OperatorEnum::Comma),

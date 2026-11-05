@@ -17,7 +17,7 @@ pub fn parser_generics(parser: &mut Parser) -> Result<Vec<Token>, ParserError> {
         token = parser.get_token()?;
 
         match token.get_type() {
-            TokenType::Operator(OperatorEnum::Comma) => continue,
+            TokenType::Operator(OperatorEnum::Comma) => {}
             TokenType::Operator(OperatorEnum::Big) => break,
             _ => return Err(ParserError::Expected(token, '>')),
         }
@@ -37,7 +37,7 @@ pub fn parser_type_ref(parser: &mut Parser) -> Result<TypeRef, ParserError> {
             elements.push(ty);
             token = parser.get_token()?;
             match token.get_type() {
-                TokenType::Operator(OperatorEnum::Comma) => continue,
+                TokenType::Operator(OperatorEnum::Comma) => {}
                 TokenType::Lr(')') => break,
                 _ => return Err(ParserError::Expected(token, ')')),
             }
@@ -57,16 +57,18 @@ pub fn parser_type_ref(parser: &mut Parser) -> Result<TypeRef, ParserError> {
     let mut try_generics = false;
     if let TokenType::Operator(OperatorEnum::Not) = token.get_type() {
         token = parser.get_token()?;
-        try_generics = true
+        try_generics = true;
     }
-    if let TokenType::Operator(OperatorEnum::Less) = token.get_type() && try_generics {
+    if let TokenType::Operator(OperatorEnum::Less) = token.get_type()
+        && try_generics
+    {
         let mut generics = vec![];
         loop {
             let ga = parser_type_ref(parser)?;
             generics.push(ga);
             token = parser.get_token()?;
             match token.get_type() {
-                TokenType::Operator(OperatorEnum::Comma) => continue,
+                TokenType::Operator(OperatorEnum::Comma) => {}
                 TokenType::Operator(OperatorEnum::Big) => break,
                 TokenType::Operator(OperatorEnum::BitRight) => {
                     parser.cache = Some(Token::new(
@@ -120,7 +122,7 @@ pub fn parser_constraint(parser: &mut Parser) -> Result<Vec<(Token, Vec<TypeRef>
                 parser.cache = Some(token);
                 break;
             }
-            TokenType::Operator(OperatorEnum::Comma) => continue,
+            TokenType::Operator(OperatorEnum::Comma) => {}
             _ => return Err(ParserError::Expected(token, ',')),
         }
     }

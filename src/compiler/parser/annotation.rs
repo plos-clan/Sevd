@@ -56,7 +56,7 @@ fn element_parser(parser: &mut Parser) -> Result<Vec<AnnotationElement>, ParserE
 
         let sep = parser.get_token()?;
         match sep.get_type() {
-            TokenType::Operator(OperatorEnum::Comma) => continue,
+            TokenType::Operator(OperatorEnum::Comma) => {}
             TokenType::Lr(')') => break,
             _ => return Err(ParserError::Expected(sep, ')')),
         }

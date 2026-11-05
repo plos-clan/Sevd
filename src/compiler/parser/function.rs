@@ -11,7 +11,7 @@ fn parser_argument(parser: &mut Parser) -> Result<Vec<AstNode>, ParserError> {
     loop {
         let mut token = parser.get_token()?;
         match token.get_type() {
-            TokenType::Operator(OperatorEnum::Comma) => continue,
+            TokenType::Operator(OperatorEnum::Comma) => {}
             TokenType::Lr(')') => break,
             TokenType::Identifier => {
                 let name = token;
@@ -26,7 +26,6 @@ fn parser_argument(parser: &mut Parser) -> Result<Vec<AstNode>, ParserError> {
                     name,
                     type_name: Some(generices),
                 });
-                continue;
             }
             _ => return Err(ParserError::ExpectedToken(token, TokenType::Identifier)),
         }
@@ -81,7 +80,7 @@ pub fn function_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
             parser.cache = Some(token);
             None
         }
-        _=> return Err(ParserError::Expected(token, '{')),
+        _ => return Err(ParserError::Expected(token, '{')),
     };
 
     Ok(AstNode::Function {

@@ -24,7 +24,7 @@ pub fn while_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
                 cond: Box::new(cond),
                 body,
             }),
-            node => Ok(AstNode::WhilePattern {
+            node @ GuardNode::Let { .. } => Ok(AstNode::WhilePattern {
                 patterns: vec![node],
                 body,
             }),

@@ -1,8 +1,8 @@
-use crate::compiler::com_error::{print_semantic_error, SematicError};
+use crate::compiler::SourceFile;
+use crate::compiler::com_error::{SematicError, print_semantic_error};
 use crate::compiler::ir::AstNode;
 use crate::compiler::sematic::resolution::resolution;
 use crate::compiler::symtbl::SymbolTable;
-use crate::compiler::SourceFile;
 
 mod resolution;
 
@@ -13,6 +13,7 @@ pub struct Semantic<'a> {
 }
 
 impl<'a> Semantic<'a> {
+    #[must_use]
     pub fn new(file: &'a SourceFile, symtbl: SymbolTable<'a>) -> Self {
         Self {
             file,
@@ -20,7 +21,7 @@ impl<'a> Semantic<'a> {
             errors: Vec::new(),
         }
     }
-    
+
     pub fn get_mut_symtbl(&mut self) -> &mut SymbolTable<'a> {
         &mut self.symtbl
     }

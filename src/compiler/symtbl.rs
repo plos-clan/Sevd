@@ -79,15 +79,15 @@ impl Scope {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SymbolTable<'a> {
-    compiler: &'a Compiler,
+    compiler: &'a mut Compiler,
     current_module: ModuleId,
     scopes: Vec<Scope>,
 }
 
 impl<'a> SymbolTable<'a> {
-    pub fn new(compiler: &'a Compiler, current_module: ModuleId) -> Self {
+    pub fn new(compiler: &'a mut Compiler, current_module: ModuleId) -> Self {
         SymbolTable {
             scopes: vec![Scope::new(ScopeType::Root)],
             compiler,
@@ -107,7 +107,11 @@ impl<'a> SymbolTable<'a> {
         self.scopes.pop();
     }
 
-    pub fn compiler(&self) -> &'a Compiler {
+    pub fn compiler(&self) -> &Compiler {
+        self.compiler
+    }
+
+    pub fn compiler_mut(&mut self) -> &mut Compiler {
         self.compiler
     }
 

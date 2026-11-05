@@ -2,8 +2,8 @@ use std::path::Path;
 
 use crate::compiler::com_error::ParserError;
 use crate::compiler::ir::AstNode;
-use crate::compiler::lexer::{OperatorEnum, Token};
 use crate::compiler::lexer::TokenType;
+use crate::compiler::lexer::{OperatorEnum, Token};
 use crate::compiler::module::ModuleId;
 use crate::compiler::symtbl::SymbolTable;
 
@@ -23,7 +23,7 @@ fn import_module_path(path: &str) -> Option<Vec<String>> {
         if filename == "mod.sev" {
             parts.pop();
         } else if let Some(name) = filename.strip_suffix(".sev") {
-            *parts.last_mut()? = name.to_owned();
+            name.clone_into(parts.last_mut()?);
         }
         parts
     } else {
@@ -74,12 +74,12 @@ fn named_parse(parser: &mut Parser) -> Result<Vec<Token>, ParserError> {
                 token = parser.get_token()?;
                 match token.get_type() {
                     TokenType::Lr('}') => break,
-                    TokenType::Operator(OperatorEnum::Comma) => continue,
-                    _=> return Err(ParserError::ExpectedToken(token, TokenType::Lp('}'))),
+                    TokenType::Operator(OperatorEnum::Comma) => {}
+                    _ => return Err(ParserError::ExpectedToken(token, TokenType::Lp('}'))),
                 }
             }
             Ok(named)
-        },
+        }
         _ => Err(ParserError::ExpectedToken(token, TokenType::Identifier)),
     }
 }

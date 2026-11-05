@@ -9,8 +9,8 @@ mod guard;
 mod ifs;
 mod import;
 mod pattern;
-mod whiles;
 mod returns;
+mod whiles;
 
 use super::ir::AstNode;
 use super::symtbl::SymbolTable;
@@ -40,6 +40,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[must_use]
     pub fn new_collect(tokens: Vec<Token>) -> Self {
         Self {
             lex: None,
@@ -93,6 +94,9 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// # Errors
+    ///
+    /// `Err` has parser error
     pub fn parser(&mut self, symtbl: &mut SymbolTable<'_>) -> Result<Vec<AstNode>, ParserError> {
         let mut nodes = vec![];
         while let Some(node) = self.root_parser(symtbl)? {

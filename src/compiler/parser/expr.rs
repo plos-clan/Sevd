@@ -36,7 +36,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         self.parser.get_token()
     }
 
-    fn prefix_binding_power(operator: &OperatorEnum) -> ((), u8) {
+    fn prefix_binding_power(operator: OperatorEnum) -> ((), u8) {
         match operator {
             OperatorEnum::Plus
             | OperatorEnum::Minus
@@ -107,7 +107,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
             fields.push((name, node));
             token = self.get_token()?;
             match token.get_type() {
-                TokenType::Operator(OperatorEnum::Comma) => continue,
+                TokenType::Operator(OperatorEnum::Comma) => {}
                 TokenType::Lr('}') => break,
                 _ => return Err(ParserError::Expected(token, '}')),
             }
@@ -124,7 +124,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
         let mut try_generics = false;
         if let TokenType::Operator(OperatorEnum::Not) = token.get_type() {
             token = self.get_token()?;
-            try_generics = true
+            try_generics = true;
         }
         let generics = if let TokenType::Operator(OperatorEnum::Less) = token.get_type()
             && try_generics
@@ -136,7 +136,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 token = self.get_token()?;
                 match token.get_type() {
                     TokenType::Operator(OperatorEnum::Big) => break,
-                    TokenType::Operator(OperatorEnum::Comma) => continue,
+                    TokenType::Operator(OperatorEnum::Comma) => {}
                     TokenType::Operator(OperatorEnum::BitRight) => {
                         self.parser.cache = Some(Token::new(
                             token.get_span().clone(),
@@ -195,7 +195,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                             n_token = self.get_token()?;
                             match n_token.get_type() {
                                 TokenType::Lr(')') => break,
-                                TokenType::Operator(OperatorEnum::Comma) => continue,
+                                TokenType::Operator(OperatorEnum::Comma) => {}
                                 _ => return Err(ParserError::Expected(n_token, ')')),
                             }
                         }
@@ -205,7 +205,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                 }
             }
             TokenType::Operator(operator) => {
-                let ((), r_bp) = Self::prefix_binding_power(operator);
+                let ((), r_bp) = Self::prefix_binding_power(*operator);
                 if let TokenType::Operator(OperatorEnum::BitOr) = token.get_type() {
                     return self.closure_parser(false);
                 }
@@ -254,7 +254,7 @@ impl<'a, 'b> ExprParser<'a, 'b> {
             arguments.push(expr);
             token = self.get_token()?;
             match token.get_type() {
-                TokenType::Operator(OperatorEnum::Comma) => continue,
+                TokenType::Operator(OperatorEnum::Comma) => {}
                 TokenType::Lr(')') => break,
                 _ => return Err(ParserError::Expected(token, ',')),
             }
@@ -316,11 +316,11 @@ impl<'a, 'b> ExprParser<'a, 'b> {
                         }
                     }
                     TokenType::Operator(OperatorEnum::Question) => {
-                        expr_tree = ExprNode::Try(Box::new(expr_tree))
+                        expr_tree = ExprNode::Try(Box::new(expr_tree));
                     }
 
                     TokenType::Operator(OperatorEnum::Not) => {
-                        expr_tree = ExprNode::Unpack(Box::new(expr_tree))
+                        expr_tree = ExprNode::Unpack(Box::new(expr_tree));
                     }
 
                     TokenType::Operator(operator)

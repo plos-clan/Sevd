@@ -15,11 +15,11 @@ pub struct FieldId(pub usize);
 
 #[derive(Debug, Clone)]
 pub enum HirLit {
-    UInt(Token, u64), // unsigned number (u8 - u64)
-    IInt(Token, i64), // signed number (i8 - i64)
+    UInt(Token, u64),  // unsigned number (u8 - u64)
+    IInt(Token, i64),  // signed number (i8 - i64)
     Float(Token, f64), // f32 / f64
-    Bool(Token,bool),
-    Char(Token,char), // i8
+    Bool(Token, bool),
+    Char(Token, char), // i8
     String(Token, String),
 }
 
@@ -27,7 +27,7 @@ pub enum HirLit {
 pub enum HirExpr {
     Imm(HirLit),
     Ref(Token),
-    
+
     Unary {
         opt: OperatorEnum,
         child: Box<HirExpr>,
@@ -49,9 +49,5 @@ pub enum HirStmt {
 
 #[derive(Debug, Clone)]
 pub enum HirItem {
-    Func {
-        blk: HirStmt,
-        ret: TypeKind,
-    }
+    Func { blk: HirStmt, ret: TypeKind },
 }
-

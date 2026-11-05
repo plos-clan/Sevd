@@ -1,13 +1,14 @@
+mod define;
 mod lets;
-mod pattern;
 
 use lets::resolution_global;
 
 use crate::compiler::com_error::SematicError;
-use crate::compiler::ir::hast::{HastEnum, HastFunction, HastItem, HastStruct};
+use crate::compiler::ir::hast::{HastFunction, HastItem};
 use crate::compiler::ir::{AnnotationElement, AstNode, TypeRef};
 use crate::compiler::lexer::Token;
 use crate::compiler::sematic::Semantic;
+use crate::compiler::sematic::resolution::define::{collect_enum, collect_struct};
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
@@ -28,9 +29,10 @@ fn argument_to_iterm(args: Vec<AstNode>) -> Vec<(Token, TypeRef)> {
 }
 
 fn generic_resolution(
+    semantic: &mut Semantic,
     func: AstNode,
     attributes: Vec<(Token, Vec<AnnotationElement>)>,
-) -> Result<HastItem, SematicError> {
+) -> HastItem {
     let AstNode::Function {
         name,
         generics,
@@ -60,34 +62,35 @@ fn generic_resolution(
         Some(constraints_target)
     } else {
         if constraint.is_some() {
-            return Err(SematicError::MissingGenericConstraint(name));
+            semantic.push_error(SematicError::MissingGenericConstraint(name.clone()));
         }
         None
     };
 
-    Ok(HastItem::Function(Box::new(HastFunction {
+    HastItem::Function(Box::new(HastFunction {
         name,
         args: argument_to_iterm(args),
         ret: ret_type,
         attributes,
         constraint: constraint_opt,
         body: block.as_ref().clone(),
-    })))
+    }))
 }
 
 fn semantic_item(
     semantic: &mut Semantic,
     iter: &mut Peekable<IntoIter<AstNode>>,
-) -> Result<Option<HastItem>, SematicError> {
+) -> Option<HastItem> {
     let mut attributes = vec![];
 
     loop {
         let Some(node) = iter.peek() else {
             if attributes.is_empty() {
-                return Ok(None);
+                return None;
             }
             let node: &(Token, Vec<AnnotationElement>) = attributes.last().unwrap();
-            return Err(SematicError::InvalidAnnotationTarget(node.0.clone()));
+            semantic.push_error(SematicError::InvalidAnnotationTarget(node.0.clone()));
+            return None;
         };
         let AstNode::Annotation { .. } = node else {
             break;
@@ -100,35 +103,29 @@ fn semantic_item(
 
     let Some(node) = iter.next() else {
         if attributes.is_empty() {
-            return Ok(None);
+            return None;
         }
         let (token, _) = attributes.last().unwrap();
-        return Err(SematicError::InvalidAnnotationTarget(token.clone()));
+        semantic.push_error(SematicError::InvalidAnnotationTarget(token.clone()));
+        return None;
     };
     match node {
         AstNode::Import { name, module_id } => {
             if let Some((token, _)) = attributes.first() {
-                return Err(SematicError::InvalidAnnotationTarget(token.clone()));
+                semantic.push_error(SematicError::InvalidAnnotationTarget(token.clone()));
             }
-            Ok(Some(HastItem::Import { name, module_id }))
+            Some(HastItem::Import { name, module_id })
         }
-        AstNode::Function { .. } => Ok(Some(generic_resolution(node, attributes)?)),
+        AstNode::Function { .. } => Some(generic_resolution(semantic, node, attributes)),
         AstNode::StructDefine {
             name,
             generics,
             fields,
-        } => Ok(Some(HastItem::Struct(HastStruct {
-            name,
-            generics,
-            fields,
-            attributes,
-        }))),
-        AstNode::EnumDefine { name, variants } => Ok(Some(HastItem::Enum(HastEnum {
-            name,
-            variants,
-            attributes,
-        }))),
-        AstNode::DefineElse { .. } => Ok(Some(resolution_global(semantic, node, attributes)?)),
+        } => Some(collect_struct(semantic, name, generics, fields, attributes)),
+        AstNode::EnumDefine { name, variants } => {
+            Some(collect_enum(semantic, name, variants, attributes))
+        }
+        AstNode::DefineElse { .. } => Some(resolution_global(semantic, node, attributes)),
         _ => unreachable!(),
     }
 }
@@ -136,14 +133,8 @@ fn semantic_item(
 pub fn resolution(semantic: &mut Semantic, nodes: Vec<AstNode>) -> Vec<HastItem> {
     let mut iter = nodes.into_iter().peekable();
     let mut items = vec![];
-    loop {
-        match semantic_item(semantic, &mut iter) {
-            Ok(Some(hast_item)) => {
-                items.push(hast_item);
-            }
-            Err(error) => semantic.push_error(error),
-            _ => break,
-        }
+    while let Some(item) = semantic_item(semantic, &mut iter) {
+        items.push(item);
     }
     items
 }

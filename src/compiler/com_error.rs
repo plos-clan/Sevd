@@ -35,11 +35,11 @@ pub enum SematicError {
     MissingGenericConstraint(Token),                   // 未提供泛型的绑定规则
     MissingInitializer(Token),                         // 未提供初始值
     MissingBlockFinalValue(Token),                     // 块语句缺失最终值
+    ItemAlreadyDefined(Token),                         // 元素重复定义
     UnresolvedSymbol(Token),                           // 无法解析符号
-    NeedType(Token, TypeKind, TypeKind),               // 需求类型与实际类型不符
 }
 
-fn print_infomation(file: &SourceFile, message: String, token: Token) {
+fn print_infomation(file: &SourceFile, message: &str, token: &Token) {
     eprintln!("SyntaxError ({}): {message}", file.name);
     let start = token.get_span().start();
     let (line, column) = (start.line(), start.column());
@@ -62,11 +62,9 @@ fn print_infomation(file: &SourceFile, message: String, token: Token) {
 
     eprintln!("{line_prefix} | {line_text}");
     if is_terminal {
-        eprintln!(
-            "{gutter_padding} | {indicator_padding}\x1b[31m{indicator}\x1b[0m",
-        );
+        eprintln!("{gutter_padding} | {indicator_padding}\x1b[31m{indicator}\x1b[0m");
     } else {
-        eprintln!("{gutter_padding} | {indicator_padding}{indicator}",);
+        eprintln!("{gutter_padding} | {indicator_padding}{indicator}");
     }
 }
 
@@ -78,7 +76,7 @@ pub fn print_parser_error(file: &SourceFile, error: ParserError) {
             LexError::InvalidToken(msg, token) => (msg, token),
         },
         ParserError::NotAStatement(token) => ("Not a statement".to_string(), token),
-        ParserError::Expected(token, c) => (format!("'{}' expected.", c), token),
+        ParserError::Expected(token, c) => (format!("'{c}' expected."), token),
         ParserError::ExpectedToken(token, key) => (format!("'{key}' expected."), token),
         ParserError::UnknownLibrary(token, message) => (message, token),
         ParserError::IllegalStmtEnd(token) => ("Illegal statement end".to_string(), token),
@@ -90,7 +88,7 @@ pub fn print_parser_error(file: &SourceFile, error: ParserError) {
         ParserError::MissingStatement(token) => ("Missing statement".to_string(), token),
         ParserError::MissingEnumElement(token) => ("Missing enum element".to_string(), token),
     };
-    print_infomation(file, message, token);
+    print_infomation(file, message.as_str(), &token);
 }
 
 fn print_unit_error(file: &SourceFile, error: SematicError) {
@@ -113,11 +111,16 @@ fn print_unit_error(file: &SourceFile, error: SematicError) {
             format!("Operator '{opt}' cannot be applied to type '{kind}'").to_string(),
             token,
         ),
-        SematicError::NeedType(token, need, has) => {
-            (format!("expected '{need}', found '{has}'").to_string(), token)
-        }
+        SematicError::ItemAlreadyDefined(token) => (
+            format!(
+                "The name `{}` is defined multiple times",
+                token.get_span().text()
+            )
+            .to_string(),
+            token,
+        ),
     };
-    print_infomation(file, message, token);
+    print_infomation(file, message.as_str(), &token);
 }
 
 pub fn print_semantic_error(file: &SourceFile, error: Vec<SematicError>) {
