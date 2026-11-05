@@ -1,5 +1,5 @@
-use super::{AnnotationElement, AstNode, ExprNode, Pattern, TypeRef};
-use crate::compiler::ir::hir::ItemId;
+use super::{AnnotationElement, AstNode, ExprNode, TypeRef};
+use crate::compiler::ir::hir::{ItemId, LocalId, MemberId, PathId};
 use crate::compiler::lexer::{OperatorEnum, Token};
 use crate::compiler::module::ModuleId;
 
@@ -51,6 +51,21 @@ pub enum HastExpr {
 }
 
 #[derive(Debug, Clone)]
+pub enum HastPattern {
+    Wildcard, // _
+    GlobalBind(MemberId),
+    Bind(LocalId),
+    Or(Vec<HastPattern>),    // a | b | c
+    Tuple(Vec<HastPattern>), // (a, b)
+    Constructor {
+        // path::path(args), path()
+        path: PathId,
+        args: Vec<HastPattern>,
+    },
+    Error, // 错误占位符
+}
+
+#[derive(Debug, Clone)]
 pub enum HastStmt {
     Local {
         name: Token,
@@ -65,7 +80,7 @@ pub enum HastStmt {
 
 #[derive(Debug, Clone)]
 pub struct HastGlobal {
-    pub pat: Pattern,
+    pub pat: HastPattern,
     pub ty: TypeRef,
     pub attributes: Vec<(Token, Vec<AnnotationElement>)>,
     pub init: ExprNode,
@@ -77,14 +92,12 @@ pub struct HastFunction {
     pub args: Vec<(Token, TypeRef)>,
     pub constraint: Option<Vec<(Token, Vec<TypeRef>)>>,
     pub ret: TypeRef,
-    pub name: Token,
     pub attributes: Vec<(Token, Vec<AnnotationElement>)>,
     pub body: AstNode,
 }
 
 #[derive(Debug, Clone)]
 pub struct HastStruct {
-    pub name: Token,
     pub generics: Option<Vec<Token>>,
     pub fields: Vec<(Token, TypeRef)>,
     pub attributes: Vec<(Token, Vec<AnnotationElement>)>,
@@ -93,7 +106,6 @@ pub struct HastStruct {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct HastEnum {
-    pub(crate) name: Token,
     pub(crate) variants: Vec<(Token, Vec<TypeRef>)>,
     pub(crate) attributes: Vec<(Token, Vec<AnnotationElement>)>,
 }
@@ -105,8 +117,8 @@ pub enum HastItem {
         name: Vec<Token>,
         module_id: ModuleId,
     },
-    Function(Box<HastFunction>),
+    Function(MemberId,Box<HastFunction>),
     Global(Box<HastGlobal>),
     Struct(ItemId, HastStruct),
-    Enum(HastEnum),
+    Enum(ItemId,HastEnum),
 }

@@ -35,7 +35,7 @@ pub enum TypeRef {
 
 #[derive(Debug, Clone)]
 pub enum Pattern {
-    Wildcard, // _
+    Wildcard(Token), // _
     Variant {
         name: Token,
         args: Vec<Pattern>,
@@ -49,6 +49,24 @@ pub enum Pattern {
         path: Vec<Token>,
         args: Vec<Pattern>,
     },
+}
+
+impl Pattern {
+    pub fn first_token(&self) -> Option<&Token> {
+        match self {
+            Self::Bind(token)
+            | Self::Literal(token)
+            | Self::Wildcard(token) => Some(token),
+
+            Self::Variant { name, .. } => Some(name),
+
+            Self::Constructor { path, .. } => path.first(),
+
+            Self::Or(patterns) | Self::Tuple(patterns) => {
+                patterns.iter().find_map(Self::first_token)
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

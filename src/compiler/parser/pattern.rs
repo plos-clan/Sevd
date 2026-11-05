@@ -102,7 +102,7 @@ fn parse_pattern_no_or(parser: &mut Parser) -> Result<Pattern, ParserError> {
     let token = parser.get_token()?;
 
     match token.get_type() {
-        TokenType::Identifier if token.get_span().text() == "_" => Ok(Pattern::Wildcard),
+        TokenType::Identifier if token.get_span().text() == "_" => Ok(Pattern::Wildcard(token)),
         TokenType::Number(_) | TokenType::String(_) => Ok(Pattern::Literal(token)),
         TokenType::Lp('(') => parse_tuple(parser),
         TokenType::Identifier => parse_path_or_bind(parser, token),

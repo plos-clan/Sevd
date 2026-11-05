@@ -1,17 +1,26 @@
 use crate::compiler::ir::tnode::TypeKind;
 use crate::compiler::lexer::{OperatorEnum, Token};
+use crate::compiler::module::ModuleId;
 
-/// 用于 function/enum/struct/全局let 的 `SymbolID`
+/// 用于 enum/struct/union/interface 的类型空间 `SymbolID`
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ItemId(pub usize);
 
-/// 用于 局部变量/形参/模式绑定 的 `SymbolID`
+/// 用于 function/let 的成员空间 `SymbolID`
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct MemberId(pub usize);
+
+/// 用于局部变量/形参/模式绑定的 `SymbolID`
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct LocalId(pub usize);
 
-/// 用于 枚举和结构体成员 的 `SymbolID`
+/// 用于枚举和结构体成员的 `SymbolID`
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FieldId(pub usize);
+
+/// 用于 path1::path2 路径空间的 `SymbolID`
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct PathId(pub ModuleId, pub MemberId);
 
 #[derive(Debug, Clone)]
 pub enum HirLit {

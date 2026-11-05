@@ -35,8 +35,9 @@ pub enum SematicError {
     MissingGenericConstraint(Token),                   // 未提供泛型的绑定规则
     MissingInitializer(Token),                         // 未提供初始值
     MissingBlockFinalValue(Token),                     // 块语句缺失最终值
-    ItemAlreadyDefined(Token),                         // 元素重复定义
+    ItemAlreadyDefined(Token),                         // 重复定义项
     UnresolvedSymbol(Token),                           // 无法解析符号
+    InvalidBinding(Token),                             // 非法的绑定形式
 }
 
 fn print_infomation(file: &SourceFile, message: &str, token: &Token) {
@@ -119,6 +120,7 @@ fn print_unit_error(file: &SourceFile, error: SematicError) {
             .to_string(),
             token,
         ),
+        SematicError::InvalidBinding(token) => ("invalid pattern binding".to_string(), token),
     };
     print_infomation(file, message.as_str(), &token);
 }

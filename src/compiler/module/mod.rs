@@ -1,10 +1,10 @@
 use crate::compiler::SourceFile;
 use crate::compiler::com_error::SematicError;
-use crate::compiler::ir::hir::ItemId;
+use crate::compiler::ir::hir::{ItemId, MemberId};
 use crate::compiler::lexer::Token;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ModuleId(pub(crate) usize);
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ModuleId(pub usize);
 
 #[derive(Debug, Clone)]
 pub struct Module {
@@ -13,7 +13,9 @@ pub struct Module {
     pub file: Option<SourceFile>,
     pub modules: Vec<Module>,
     pub items: Vec<(ItemId, Token)>,
+    pub members: Vec<(MemberId, Token)>,
     item_id_alloc: usize,
+    member_id_alloc: usize,
 }
 
 impl Module {
@@ -25,13 +27,21 @@ impl Module {
             modules: Vec::new(),
             file,
             items: vec![],
+            members: vec![],
             item_id_alloc: 0,
+            member_id_alloc: 0,
         }
     }
 
     pub fn alloc_item_id(&mut self) -> ItemId {
         let id = ItemId(self.item_id_alloc);
         self.item_id_alloc += 1;
+        id
+    }
+    
+    pub fn alloc_member_id(&mut self) -> MemberId {
+        let id = MemberId(self.member_id_alloc);
+        self.member_id_alloc += 1;
         id
     }
 
@@ -47,6 +57,21 @@ impl Module {
             return Err(SematicError::ItemAlreadyDefined(name));
         }
         self.items.push((id, name));
+        Ok(())
+    }
+
+    /// # Errors
+    ///
+    /// check multiple define
+    pub fn collect_member_define(&mut self, id: MemberId, name: Token) -> Result<(), SematicError> {
+        if self
+            .members
+            .iter()
+            .any(|(_, existing)| existing.get_span().text() == name.get_span().text())
+        {
+            return Err(SematicError::ItemAlreadyDefined(name));
+        }
+        self.members.push((id, name));
         Ok(())
     }
 
