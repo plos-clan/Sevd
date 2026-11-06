@@ -54,9 +54,7 @@ pub enum Pattern {
 impl Pattern {
     pub fn first_token(&self) -> Option<&Token> {
         match self {
-            Self::Bind(token)
-            | Self::Literal(token)
-            | Self::Wildcard(token) => Some(token),
+            Self::Bind(token) | Self::Literal(token) | Self::Wildcard(token) => Some(token),
 
             Self::Variant { name, .. } => Some(name),
 

@@ -30,7 +30,7 @@ fn semantic_global_pattern(semantic: &mut Semantic, head: Pattern) -> HastPatter
         }
         head => {
             semantic.push_error(SematicError::InvalidBinding(
-                head.first_token().unwrap().clone()
+                head.first_token().unwrap().clone(),
             ));
             HastPattern::Error
         }

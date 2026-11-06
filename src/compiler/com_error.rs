@@ -36,6 +36,7 @@ pub enum SematicError {
     MissingInitializer(Token),                         // 未提供初始值
     MissingBlockFinalValue(Token),                     // 块语句缺失最终值
     ItemAlreadyDefined(Token),                         // 重复定义项
+    FiledAlreadyDefined(Token),                        // 重复定义成员
     UnresolvedSymbol(Token),                           // 无法解析符号
     InvalidBinding(Token),                             // 非法的绑定形式
 }
@@ -121,6 +122,10 @@ fn print_unit_error(file: &SourceFile, error: SematicError) {
             token,
         ),
         SematicError::InvalidBinding(token) => ("invalid pattern binding".to_string(), token),
+        SematicError::FiledAlreadyDefined(token) => (
+            format!("field '{}' is already declared", token.get_span().text()),
+            token,
+        ),
     };
     print_infomation(file, message.as_str(), &token);
 }

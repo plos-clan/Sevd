@@ -1,5 +1,5 @@
 use super::{AnnotationElement, AstNode, ExprNode, TypeRef};
-use crate::compiler::ir::hir::{ItemId, LocalId, MemberId, PathId};
+use crate::compiler::ir::hir::{FieldId, ItemId, LocalId, MemberId, PathId};
 use crate::compiler::lexer::{OperatorEnum, Token};
 use crate::compiler::module::ModuleId;
 
@@ -99,14 +99,14 @@ pub struct HastFunction {
 #[derive(Debug, Clone)]
 pub struct HastStruct {
     pub generics: Option<Vec<Token>>,
-    pub fields: Vec<(Token, TypeRef)>,
+    pub fields: Vec<(FieldId, TypeRef)>,
     pub attributes: Vec<(Token, Vec<AnnotationElement>)>,
 }
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct HastEnum {
-    pub(crate) variants: Vec<(Token, Vec<TypeRef>)>,
+    pub(crate) variants: Vec<(FieldId, Vec<TypeRef>)>,
     pub(crate) attributes: Vec<(Token, Vec<AnnotationElement>)>,
 }
 
@@ -117,8 +117,8 @@ pub enum HastItem {
         name: Vec<Token>,
         module_id: ModuleId,
     },
-    Function(MemberId,Box<HastFunction>),
+    Function(MemberId, Box<HastFunction>),
     Global(Box<HastGlobal>),
     Struct(ItemId, HastStruct),
-    Enum(ItemId,HastEnum),
+    Enum(ItemId, HastEnum),
 }

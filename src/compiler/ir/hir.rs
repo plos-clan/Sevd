@@ -2,6 +2,8 @@ use crate::compiler::ir::tnode::TypeKind;
 use crate::compiler::lexer::{OperatorEnum, Token};
 use crate::compiler::module::ModuleId;
 
+pub const ERROR_FIELD_ID: FieldId = FieldId(usize::MAX);
+
 /// 用于 enum/struct/union/interface 的类型空间 `SymbolID`
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ItemId(pub usize);
@@ -18,7 +20,7 @@ pub struct LocalId(pub usize);
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FieldId(pub usize);
 
-/// 用于 path1::path2 路径空间的 `SymbolID`
+/// 用于 `path1::path2` 路径空间的 `SymbolID`
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PathId(pub ModuleId, pub MemberId);
 

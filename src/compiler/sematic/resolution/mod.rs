@@ -73,10 +73,19 @@ fn semantic_item(
             name,
             generics,
             fields,
-        } => Some(collect_struct(semantic, name, generics, fields, attributes)),
-        AstNode::EnumDefine { name, variants } => {
-            Some(collect_enum(semantic, name, variants, attributes))
-        }
+        } => Some(collect_struct(
+            semantic,
+            name,
+            generics,
+            fields.as_slice(),
+            attributes,
+        )),
+        AstNode::EnumDefine { name, variants } => Some(collect_enum(
+            semantic,
+            name,
+            variants.as_slice(),
+            attributes,
+        )),
         AstNode::DefineElse { .. } => Some(resolution_global(semantic, node, attributes)),
         _ => unreachable!(),
     }
