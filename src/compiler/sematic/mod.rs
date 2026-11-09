@@ -1,24 +1,41 @@
-use crate::compiler::SourceFile;
-use crate::compiler::com_error::{SematicError, print_semantic_error};
+use crate::compiler::Compiler;
+use crate::compiler::com_error::SematicError;
 use crate::compiler::ir::AstNode;
+use crate::compiler::ir::hast::HastItem;
+use crate::compiler::module::ModuleId;
 use crate::compiler::sematic::resolution::resolution;
+use crate::compiler::sematic::typeref::resolver;
 use crate::compiler::symtbl::SymbolTable;
 
 mod resolution;
+mod typeref;
+
+#[derive(Debug, Clone)]
+pub enum SemanticLevel {
+    Load,
+    HighAst(Vec<HastItem>, Vec<SematicError>),
+    Error,
+}
 
 pub struct Semantic<'a> {
-    file: &'a SourceFile,
     symtbl: SymbolTable<'a>,
-    errors: Vec<SematicError>,
+    pub errors: Vec<SematicError>,
 }
 
 impl<'a> Semantic<'a> {
     #[must_use]
-    pub fn new(file: &'a SourceFile, symtbl: SymbolTable<'a>) -> Self {
+    pub fn new(symtbl: SymbolTable<'a>) -> Self {
         Self {
-            file,
             symtbl,
             errors: Vec::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn new_ir(compiler: &'a mut Compiler, id: ModuleId, errors: Vec<SematicError>) -> Self {
+        Self {
+            symtbl: SymbolTable::new(compiler, id),
+            errors,
         }
     }
 
@@ -30,13 +47,11 @@ impl<'a> Semantic<'a> {
         self.errors.push(err);
     }
 
-    pub fn semantic(&mut self, nodes: Vec<AstNode>) {
-        let mast = resolution(self, nodes);
+    pub fn resolver(&mut self, items: Vec<HastItem>) {
+        resolver(self, items);
+    }
 
-        if !self.errors.is_empty() {
-            print_semantic_error(self.file, self.errors.clone());
-            return;
-        }
-        dbg!(mast);
+    pub fn resolution(&mut self, nodes: Vec<AstNode>) -> Vec<HastItem> {
+        resolution(self, nodes)
     }
 }

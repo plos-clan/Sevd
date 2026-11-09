@@ -1,4 +1,5 @@
 mod define;
+mod import;
 mod member;
 
 use member::resolution_global;
@@ -9,6 +10,7 @@ use crate::compiler::ir::{AnnotationElement, AstNode, TypeRef};
 use crate::compiler::lexer::Token;
 use crate::compiler::sematic::Semantic;
 use crate::compiler::sematic::resolution::define::{collect_enum, collect_struct};
+use crate::compiler::sematic::resolution::import::resolution_import;
 use crate::compiler::sematic::resolution::member::generic_resolution;
 use std::iter::Peekable;
 use std::vec::IntoIter;
@@ -62,12 +64,7 @@ fn semantic_item(
         return None;
     };
     match node {
-        AstNode::Import { name, module_id } => {
-            if let Some((token, _)) = attributes.first() {
-                semantic.push_error(SematicError::InvalidAnnotationTarget(token.clone()));
-            }
-            Some(HastItem::Import { name, module_id })
-        }
+        AstNode::Import { name, path } => Some(resolution_import(semantic, name, path)),
         AstNode::Function { .. } => Some(generic_resolution(semantic, node, attributes)),
         AstNode::StructDefine {
             name,

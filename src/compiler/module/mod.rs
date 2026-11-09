@@ -2,6 +2,7 @@ use crate::compiler::SourceFile;
 use crate::compiler::com_error::SematicError;
 use crate::compiler::ir::hir::{FieldId, ItemId, MemberId};
 use crate::compiler::lexer::Token;
+use crate::compiler::sematic::SemanticLevel;
 use crate::compiler::symtbl::{Item, ItemType};
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -12,7 +13,9 @@ pub struct Module {
     pub id: ModuleId,
     pub name: String,
     pub file: Option<SourceFile>,
+    pub level: SemanticLevel,
     pub modules: Vec<Module>,
+
     pub items: Vec<(ItemId, Item)>,
     pub members: Vec<(MemberId, Token)>,
     item_id_alloc: usize,
@@ -25,6 +28,7 @@ impl Module {
         Self {
             id,
             name,
+            level: SemanticLevel::Load,
             modules: Vec::new(),
             file,
             items: vec![],

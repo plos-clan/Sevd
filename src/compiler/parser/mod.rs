@@ -13,7 +13,6 @@ mod returns;
 mod whiles;
 
 use super::ir::AstNode;
-use super::symtbl::SymbolTable;
 use crate::compiler::com_error::ParserError;
 use crate::compiler::com_error::ParserError::LexError;
 use crate::compiler::lexer::Token;
@@ -73,23 +72,20 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn root_parser(
-        &mut self,
-        symtbl: &mut SymbolTable<'_>,
-    ) -> Result<Option<AstNode>, ParserError> {
+    fn root_parser(&mut self) -> Result<Option<AstNode>, ParserError> {
         let token = self.get_token()?;
         if token.is_eof() {
             return Ok(None);
         }
 
         match token.get_type() {
-            TokenType::Import => Ok(Some(import_parser(self, symtbl)?)),
+            TokenType::Import => Ok(Some(import_parser(self)?)),
             TokenType::Function => Ok(Some(function_parser(self)?)),
             TokenType::Let => Ok(Some(var_parser(self, token)?)),
             TokenType::Enum => Ok(Some(enum_parser(self)?)),
             TokenType::Struct => Ok(Some(struct_parser(self)?)),
             TokenType::At => Ok(Some(annotation_parser(self)?)),
-            TokenType::End => Ok(self.root_parser(symtbl)?),
+            TokenType::End => Ok(self.root_parser()?),
             _ => Err(ParserError::NotAStatement(token)),
         }
     }
@@ -97,9 +93,9 @@ impl<'a> Parser<'a> {
     /// # Errors
     ///
     /// `Err` has parser error
-    pub fn parser(&mut self, symtbl: &mut SymbolTable<'_>) -> Result<Vec<AstNode>, ParserError> {
+    pub fn parser(&mut self) -> Result<Vec<AstNode>, ParserError> {
         let mut nodes = vec![];
-        while let Some(node) = self.root_parser(symtbl)? {
+        while let Some(node) = self.root_parser()? {
             nodes.push(node);
         }
         Ok(nodes)

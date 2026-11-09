@@ -121,4 +121,5 @@ pub enum HastItem {
     Global(Box<HastGlobal>),
     Struct(ItemId, HastStruct),
     Enum(ItemId, HastEnum),
+    Error,
 }

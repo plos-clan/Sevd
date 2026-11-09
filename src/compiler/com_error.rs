@@ -16,7 +16,6 @@ pub enum ParserError {
     NotAStatement(Token),            // 不是一个语句
     Expected(Token, char),           // 需要指定字符
     ExpectedToken(Token, TokenType), // 需要制定词元类型
-    UnknownLibrary(Token, String),   // 找不到指定的模块
     IllegalStmtEnd(Token),           // 非法语句结束
     IllegalExpression(Token),        // 非法的表达式组合
     MissingCondition(Token),         // 缺少条件表达式
@@ -39,6 +38,8 @@ pub enum SematicError {
     FiledAlreadyDefined(Token),                        // 重复定义成员
     UnresolvedSymbol(Token),                           // 无法解析符号
     InvalidBinding(Token),                             // 非法的绑定形式
+    UnknownLibrary(Token, String),                     // 找不到指定的模块
+    IllegalImport(Token),                              // 非法的导入语句
 }
 
 fn print_infomation(file: &SourceFile, message: &str, token: &Token) {
@@ -80,7 +81,6 @@ pub fn print_parser_error(file: &SourceFile, error: ParserError) {
         ParserError::NotAStatement(token) => ("Not a statement".to_string(), token),
         ParserError::Expected(token, c) => (format!("'{c}' expected."), token),
         ParserError::ExpectedToken(token, key) => (format!("'{key}' expected."), token),
-        ParserError::UnknownLibrary(token, message) => (message, token),
         ParserError::IllegalStmtEnd(token) => ("Illegal statement end".to_string(), token),
         ParserError::IllegalExpression(token) => ("Illegal expression".to_string(), token),
         ParserError::MissingCondition(token) => ("Missing condition".to_string(), token),
@@ -105,7 +105,10 @@ fn print_unit_error(file: &SourceFile, error: SematicError) {
         SematicError::MissingBlockFinalValue(token) => {
             ("Missing block final value".to_string(), token)
         }
-        SematicError::UnresolvedSymbol(token) => ("Unresolved symbol".to_string(), token),
+        SematicError::UnresolvedSymbol(token) => (
+            format!("Unresolved symbol '{}'", token.get_span().text()),
+            token,
+        ),
         SematicError::InvalidGeneratorPassing(token) => {
             ("Invalid generator passing".to_string(), token)
         }
@@ -126,6 +129,10 @@ fn print_unit_error(file: &SourceFile, error: SematicError) {
             format!("field '{}' is already declared", token.get_span().text()),
             token,
         ),
+        SematicError::UnknownLibrary(token, path) => (format!("not found library `{path}`"), token),
+        SematicError::IllegalImport(token) => {
+            ("must use \"lib.path\" to import.".to_string(), token)
+        }
     };
     print_infomation(file, message.as_str(), &token);
 }

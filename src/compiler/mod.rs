@@ -6,17 +6,24 @@ pub mod parser;
 pub mod sematic;
 mod symtbl;
 
-use crate::compiler::com_error::print_parser_error;
+use crate::compiler::com_error::{SematicError, print_parser_error, print_semantic_error};
+use crate::compiler::ir::hast::HastItem;
 use crate::compiler::lexer::LexerAnalysis;
 use crate::compiler::module::{Module, ModuleId};
 use crate::compiler::parser::Parser;
-use crate::compiler::sematic::Semantic;
+use crate::compiler::sematic::{Semantic, SemanticLevel};
 use crate::compiler::symtbl::SymbolTable;
 use line_column::span::Span;
 use std::{
     fs, io,
     path::{Component, Path},
 };
+
+#[derive(Debug, Clone, Copy)]
+enum CompileLevel {
+    Header,
+    Ir,
+}
 
 #[derive(Debug, Clone)]
 pub struct Compiler {
@@ -75,8 +82,12 @@ impl Compiler {
         module
     }
 
-    fn compile_submodules(&mut self, module_id: ModuleId, path: &mut Vec<String>) {
-        // End the tree borrow before semantic analysis mutably borrows the compiler.
+    fn compile_submodules(
+        &mut self,
+        module_id: ModuleId,
+        path: &mut Vec<String>,
+        level: CompileLevel,
+    ) {
         let (file, children) = {
             let module = self.module(module_id).expect("compiling module must exist");
             let children: Vec<_> = module
@@ -86,14 +97,41 @@ impl Compiler {
                 .collect();
             (module.file.clone(), children)
         };
-        if let Some(file) = file {
-            println!("Compiling {} - {}", file.name, path.join("."));
-            file.compiler_header(self, module_id);
+        if let Some(mut file) = file {
+            self.compile_source_file(&mut file, module_id, path, level);
         }
         for (child_id, child_name) in children {
             path.push(child_name);
-            self.compile_submodules(child_id, path);
+            self.compile_submodules(child_id, path, level);
             path.pop();
+        }
+    }
+
+    fn compile_source_file(
+        &mut self,
+        file: &mut SourceFile,
+        module_id: ModuleId,
+        path: &mut [String],
+        level: CompileLevel,
+    ) {
+        match level {
+            CompileLevel::Header => {
+                println!("Compiling {} - {}", file.name, path.join("."));
+                if let Some(target) = file.compiler_header(self, module_id) {
+                    let module = self
+                        .module_mut(module_id)
+                        .expect("compiling module must exist");
+                    module.level = SemanticLevel::HighAst(target.0, target.1);
+                } else {
+                    let module = self
+                        .module_mut(module_id)
+                        .expect("compiling module must exist");
+                    module.level = SemanticLevel::Error;
+                }
+            }
+            CompileLevel::Ir => {
+                file.compiler_ir(self, module_id);
+            }
         }
     }
 
@@ -234,7 +272,8 @@ impl Compiler {
 
     pub fn compile(&mut self) {
         let mut path = vec![self.compiling.name.clone()];
-        self.compile_submodules(self.compiling.id, &mut path);
+        self.compile_submodules(self.compiling.id, &mut path, CompileLevel::Header);
+        self.compile_submodules(self.compiling.id, &mut path, CompileLevel::Ir);
     }
 }
 
@@ -251,20 +290,46 @@ impl SourceFile {
         Path::new(&self.name).file_stem()?.to_str()
     }
 
-    pub fn compiler_header(&self, compiler: &mut Compiler, module_id: ModuleId) {
+    /// # Panics
+    ///
+    ///
+    pub fn compiler_ir(&self, compiler: &mut Compiler, module_id: ModuleId) {
+        let (item, errors) = {
+            let module = compiler
+                .module(module_id)
+                .expect("compiling module must exist");
+            let SemanticLevel::HighAst(item, errors) = &module.level else {
+                return;
+            };
+            (item.clone(), errors.clone())
+        };
+        let mut semantic = Semantic::new_ir(compiler, module_id, errors);
+
+        semantic.resolver(item);
+
+        if !semantic.errors.is_empty() {
+            print_semantic_error(self, semantic.errors.clone());
+        }
+    }
+
+    pub fn compiler_header(
+        &self,
+        compiler: &mut Compiler,
+        module_id: ModuleId,
+    ) -> Option<(Vec<HastItem>, Vec<SematicError>)> {
         let mut lex = LexerAnalysis::new(self);
         let mut parser = Parser::new(&mut lex);
-        let mut symtbl = SymbolTable::new(compiler, module_id);
+        let symtbl = SymbolTable::new(compiler, module_id);
 
-        let nodes = match parser.parser(&mut symtbl) {
+        let nodes = match parser.parser() {
             Ok(nodes) => nodes,
             Err(err) => {
                 print_parser_error(self, err);
-                return;
+                return None;
             }
         };
 
-        let mut semantic = Semantic::new(self, symtbl);
-        semantic.semantic(nodes);
+        let mut semantic = Semantic::new(symtbl);
+        Some((semantic.resolution(nodes), semantic.errors))
     }
 }

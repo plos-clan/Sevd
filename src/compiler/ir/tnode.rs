@@ -23,8 +23,9 @@ pub enum TypeKind {
     /// i32 解析为 {name: "i32", args: []}
     /// Result<_,i32> 解析为
     /// {name: "Result", args: [
-    ///     Named { name: "i32" },
-    ///     Infer,
+    ///         Named { name: "i32" },
+    ///         Infer,
+    ///     ]
     /// }
     Named {
         name: Token,

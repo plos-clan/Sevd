@@ -1,10 +1,10 @@
 pub mod hast;
 pub mod hir;
+pub mod refast;
 pub mod tnode;
 
 use super::lexer::OperatorEnum;
 use crate::compiler::lexer::Token;
-use crate::compiler::module::ModuleId;
 
 #[derive(Debug, Clone)]
 pub enum MetaValue {
@@ -122,7 +122,7 @@ pub enum ExprNode {
 pub enum AstNode {
     Import {
         name: Vec<Token>,
-        module_id: ModuleId,
+        path: Token,
     },
     Annotation {
         name: Token,
