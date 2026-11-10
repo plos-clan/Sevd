@@ -28,9 +28,9 @@ pub enum GuardNode {
 #[derive(Debug, Clone)]
 pub enum TypeRef {
     Tuple(Vec<TypeRef>),
-    Named { name: Token, generics: Vec<TypeRef> },
-    Ident(Token),
-    Understood, // 等待推导的类型
+    Named { name: Token, generics: Vec<TypeRef> }, // Box!<i32> | Map!<i32,usize>
+    Ident(Token),                                  // i32 | T
+    Understood,                                    // 等待推导的类型
 }
 
 #[derive(Debug, Clone)]

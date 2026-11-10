@@ -7,97 +7,74 @@ pub enum NumberKind {
     I16,
     I32,
     I64,
+
     U8,
     U16,
     U32,
     U64,
+
     F32,
     F64,
+
+    Signed,   // 有符号
+    Unsigned, // 无符号
 
     // 任意数值类型都可匹配
     Number,
 }
 
 #[derive(Debug, Clone)]
-pub enum TypeKind {
-    /// i32 解析为 {name: "i32", args: []}
-    /// Result<_,i32> 解析为
-    /// {name: "Result", args: [
-    ///         Named { name: "i32" },
-    ///         Infer,
-    ///     ]
-    /// }
-    Named {
-        name: Token,
-        args: Vec<TypeKind>,
-    },
-    Tuple(Vec<TypeKind>),
-    Fn {
-        params: Vec<TypeKind>,
-        ret: Box<TypeKind>,
-    },
-    /// 空洞类型 _ 等第二次解析回填到 `HoleTable` 里
-    Hole(u64),
+pub enum PrimitiveType {
     Void,
     Bool,
     Number(NumberKind),
 
     // 因发生语义分析错误而拒绝推导的类型
+    Error,
     Nothing,
 }
 
-impl Display for TypeKind {
+impl PrimitiveType {
+    #[must_use]
+    pub fn cast(name: &str) -> Option<Self> {
+        match name {
+            "void" => Some(PrimitiveType::Void),
+            "bool" => Some(PrimitiveType::Bool),
+            "i8" => Some(PrimitiveType::Number(NumberKind::I8)),
+            "i16" => Some(PrimitiveType::Number(NumberKind::I16)),
+            "i32" => Some(PrimitiveType::Number(NumberKind::I32)),
+            "i64" => Some(PrimitiveType::Number(NumberKind::I64)),
+            "u8" => Some(PrimitiveType::Number(NumberKind::U8)),
+            "u16" => Some(PrimitiveType::Number(NumberKind::U16)),
+            "u32" => Some(PrimitiveType::Number(NumberKind::U32)),
+            "u64" => Some(PrimitiveType::Number(NumberKind::U64)),
+            "f32" => Some(PrimitiveType::Number(NumberKind::F32)),
+            "f64" => Some(PrimitiveType::Number(NumberKind::F64)),
+            _ => None,
+        }
+    }
+}
+
+impl Display for PrimitiveType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TypeKind::Named { name, args } => {
-                write!(f, "{}", name.get_span().text())?;
-                if !args.is_empty() {
-                    write!(f, "<")?;
-                    for (i, arg) in args.iter().enumerate() {
-                        if i != 0 {
-                            write!(f, ", ")?;
-                        }
-                        write!(f, "{arg}")?;
-                    }
-                    write!(f, ">")?;
-                }
-                Ok(())
-            }
-            TypeKind::Tuple(items) => {
-                write!(f, "(")?;
-                for (i, item) in items.iter().enumerate() {
-                    if i != 0 {
-                        write!(f, ", ")?;
-                    }
-                    write!(f, "{item}")?;
-                }
-                write!(f, ")")
-            }
-            TypeKind::Fn { params, ret } => {
-                write!(f, "fn(")?;
-                for (i, param) in params.iter().enumerate() {
-                    if i != 0 {
-                        write!(f, ", ")?;
-                    }
-                    write!(f, "{param}")?;
-                }
-                write!(f, ") -> {ret}")
-            }
-            TypeKind::Hole(id) => write!(f, "_{id}"),
-            TypeKind::Void => write!(f, "void"),
-            TypeKind::Bool => write!(f, "bool"),
-            TypeKind::Number(NumberKind::I8) => write!(f, "i8"),
-            TypeKind::Number(NumberKind::I16) => write!(f, "i16"),
-            TypeKind::Number(NumberKind::I32) => write!(f, "i32"),
-            TypeKind::Number(NumberKind::I64) => write!(f, "i64"),
-            TypeKind::Number(NumberKind::U8) => write!(f, "u8"),
-            TypeKind::Number(NumberKind::U16) => write!(f, "u16"),
-            TypeKind::Number(NumberKind::U32) => write!(f, "u32"),
-            TypeKind::Number(NumberKind::U64) => write!(f, "u64"),
-            TypeKind::Number(NumberKind::F32) => write!(f, "f32"),
-            TypeKind::Number(NumberKind::F64) => write!(f, "f64"),
-            TypeKind::Nothing => write!(f, "nothing"),
-            TypeKind::Number(NumberKind::Number) => write!(f, "number"),
+            PrimitiveType::Void => write!(f, "void"),
+            PrimitiveType::Bool => write!(f, "bool"),
+            PrimitiveType::Number(NumberKind::I8) => write!(f, "i8"),
+            PrimitiveType::Number(NumberKind::I16) => write!(f, "i16"),
+            PrimitiveType::Number(NumberKind::I32) => write!(f, "i32"),
+            PrimitiveType::Number(NumberKind::I64) => write!(f, "i64"),
+            PrimitiveType::Number(NumberKind::U8) => write!(f, "u8"),
+            PrimitiveType::Number(NumberKind::U16) => write!(f, "u16"),
+            PrimitiveType::Number(NumberKind::U32) => write!(f, "u32"),
+            PrimitiveType::Number(NumberKind::U64) => write!(f, "u64"),
+            PrimitiveType::Number(NumberKind::F32) => write!(f, "f32"),
+            PrimitiveType::Number(NumberKind::F64) => write!(f, "f64"),
+            PrimitiveType::Error => write!(f, "error"),
+            PrimitiveType::Nothing => write!(f, "nothing"),
+            PrimitiveType::Number(NumberKind::Signed) => write!(f, "signed"),
+            PrimitiveType::Number(NumberKind::Unsigned) => write!(f, "unsigned"),
+            PrimitiveType::Number(NumberKind::Number) => write!(f, "number"),
         }
     }
 }
@@ -106,5 +83,5 @@ impl Display for TypeKind {
 #[derive(Debug, Clone)]
 struct GenericParam {
     name: Token,
-    bounds: Vec<TypeKind>, // 泛型约束
+    bounds: Vec<PrimitiveType>, // 泛型约束
 }

@@ -1,6 +1,5 @@
-use super::lexer::{OperatorEnum, Token, TokenType};
+use super::lexer::{Token, TokenType};
 use crate::compiler::SourceFile;
-use crate::compiler::ir::tnode::TypeKind;
 use std::io::IsTerminal;
 
 #[derive(Debug, Clone)]
@@ -15,7 +14,7 @@ pub enum ParserError {
     LexError(LexError),              // 词法分析错误
     NotAStatement(Token),            // 不是一个语句
     Expected(Token, char),           // 需要指定字符
-    ExpectedToken(Token, TokenType), // 需要制定词元类型
+    ExpectedToken(Token, TokenType), // 需要指定词元类型
     IllegalStmtEnd(Token),           // 非法语句结束
     IllegalExpression(Token),        // 非法的表达式组合
     MissingCondition(Token),         // 缺少条件表达式
@@ -28,18 +27,18 @@ pub enum ParserError {
 
 #[derive(Debug, Clone)]
 pub enum SematicError {
-    InvalidAnnotationTarget(Token),                    // 非法的注解绑定
-    InvalidGeneratorPassing(Token),                    // 非法的泛型传递
-    InvalidTypeApplied(Token, OperatorEnum, TypeKind), // 非法类型应用
-    MissingGenericConstraint(Token),                   // 未提供泛型的绑定规则
-    MissingInitializer(Token),                         // 未提供初始值
-    MissingBlockFinalValue(Token),                     // 块语句缺失最终值
-    ItemAlreadyDefined(Token),                         // 重复定义项
-    FiledAlreadyDefined(Token),                        // 重复定义成员
-    UnresolvedSymbol(Token),                           // 无法解析符号
-    InvalidBinding(Token),                             // 非法的绑定形式
-    UnknownLibrary(Token, String),                     // 找不到指定的模块
-    IllegalImport(Token),                              // 非法的导入语句
+    InvalidAnnotationTarget(Token),  // 非法的注解绑定
+    InvalidGeneratorPassing(Token),  // 非法的泛型传递
+    MissingGenericConstraint(Token), // 未提供泛型的绑定规则
+    MissingInitializer(Token),       // 未提供初始值
+    MissingBlockFinalValue(Token),   // 块语句缺失最终值
+    ItemAlreadyDefined(Token),       // 重复定义项
+    FiledAlreadyDefined(Token),      // 重复定义成员
+    MemberNoAppliedType(Token),      // 成员无法应用为类型
+    UnresolvedSymbol(Token),         // 无法解析符号
+    InvalidBinding(Token),           // 非法的绑定形式
+    UnknownLibrary(Token, String),   // 找不到指定的模块
+    IllegalImport(Token),            // 非法的导入语句
 }
 
 fn print_infomation(file: &SourceFile, message: &str, token: &Token) {
@@ -112,10 +111,6 @@ fn print_unit_error(file: &SourceFile, error: SematicError) {
         SematicError::InvalidGeneratorPassing(token) => {
             ("Invalid generator passing".to_string(), token)
         }
-        SematicError::InvalidTypeApplied(token, opt, kind) => (
-            format!("Operator '{opt}' cannot be applied to type '{kind}'").to_string(),
-            token,
-        ),
         SematicError::ItemAlreadyDefined(token) => (
             format!(
                 "The name `{}` is defined multiple times",
@@ -124,14 +119,17 @@ fn print_unit_error(file: &SourceFile, error: SematicError) {
             .to_string(),
             token,
         ),
-        SematicError::InvalidBinding(token) => ("invalid pattern binding".to_string(), token),
+        SematicError::InvalidBinding(token) => ("Invalid pattern binding".to_string(), token),
         SematicError::FiledAlreadyDefined(token) => (
-            format!("field '{}' is already declared", token.get_span().text()),
+            format!("Field '{}' is already declared", token.get_span().text()),
             token,
         ),
-        SematicError::UnknownLibrary(token, path) => (format!("not found library `{path}`"), token),
+        SematicError::UnknownLibrary(token, path) => (format!("Not found library `{path}`"), token),
         SematicError::IllegalImport(token) => {
-            ("must use \"lib.path\" to import.".to_string(), token)
+            ("Must use \"lib.path\" to import".to_string(), token)
+        }
+        SematicError::MemberNoAppliedType(token) => {
+            ("Member cannot be applied as a type".to_string(), token)
         }
     };
     print_infomation(file, message.as_str(), &token);

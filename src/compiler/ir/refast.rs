@@ -1,4 +1,5 @@
-use crate::compiler::ir::hir::{ItemId, MemberId};
+use crate::compiler::ir::hir::{FieldId, ItemId, MemberId, TypeVarId};
+use crate::compiler::ir::tnode::PrimitiveType;
 use crate::compiler::lexer::Token;
 use crate::compiler::module::ModuleId;
 
@@ -21,7 +22,6 @@ pub enum ImportedName {
     TypeId(Token, TypeDefId),
     MemberId(Token, MemberDefId),
     Double(Token, TypeDefId, MemberDefId),
-    Error,
 }
 
 pub struct TypeKind {
@@ -29,8 +29,34 @@ pub struct TypeKind {
     pub meb_id: MemberId,
 }
 
+#[derive(Debug, Clone)]
+pub enum RefAstType {
+    Primitive(PrimitiveType), // base type
+    Tuple(Vec<RefAstType>),   // (i32, i64)
+    Single(TypeDefId),        // 单一的类型(不带泛型参数)
+    Adt {
+        def: TypeDefId,
+        args: Vec<RefAstType>,
+    }, // struct!<args>/enum(args)
+    Infer(TypeVarId),         // <T> 泛型回填
+    Understood(TypeVarId),    // 推导回填
+}
+
+pub struct RefStruct {
+    pub fields: Vec<(FieldId, RefAstType)>,
+}
+
 pub enum RefAst {
-    Primitive(TypeDefId),
-    Tuple(Vec<TypeKind>),
-    Adt { def: TypeDefId, args: Vec<TypeKind> },
+    Struct(ItemId, RefStruct),
+}
+
+impl ImportedName {
+    #[must_use]
+    pub fn get_token(&self) -> &Token {
+        match self {
+            ImportedName::TypeId(token, _)
+            | ImportedName::MemberId(token, _)
+            | ImportedName::Double(token, _, _) => token,
+        }
+    }
 }

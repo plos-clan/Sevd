@@ -1,8 +1,10 @@
 use crate::compiler::Compiler;
 use crate::compiler::com_error::SematicError;
-use crate::compiler::ir::hir::FieldId;
+use crate::compiler::ir::hir::{FieldId, TypeVarId};
+use crate::compiler::ir::refast::RefAstType;
 use crate::compiler::lexer::Token;
 use crate::compiler::module::ModuleId;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub enum ItemType {
@@ -10,7 +12,6 @@ pub enum ItemType {
     Struct,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Item {
     alloc_field_id: usize,
@@ -50,10 +51,34 @@ impl Item {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct HoleTable {
+    alloc_id: usize,
+    table: HashMap<TypeVarId, Option<RefAstType>>,
+}
+
+impl HoleTable {
+    pub fn new() -> Self {
+        Self {
+            alloc_id: 0,
+            table: HashMap::new(),
+        }
+    }
+
+    pub fn alloc_var_id(&mut self) -> TypeVarId {
+        let id = TypeVarId(self.alloc_id);
+        self.table.insert(id, None);
+        self.alloc_id += 1;
+        id
+    }
+}
+
 #[derive(Debug)]
 pub struct SymbolTable<'a> {
     compiler: &'a mut Compiler,
     current_module: ModuleId,
+    understood: HoleTable,
+    infer: HoleTable,
 }
 
 impl<'a> SymbolTable<'a> {
@@ -61,7 +86,17 @@ impl<'a> SymbolTable<'a> {
         SymbolTable {
             compiler,
             current_module,
+            understood: HoleTable::new(),
+            infer: HoleTable::new(),
         }
+    }
+
+    pub fn understood_mut(&mut self) -> &mut HoleTable {
+        &mut self.understood
+    }
+
+    pub fn infer_mut(&mut self) -> &mut HoleTable {
+        &mut self.infer
     }
 
     pub fn compiler(&self) -> &Compiler {

@@ -1,4 +1,4 @@
-use crate::compiler::ir::tnode::TypeKind;
+use crate::compiler::ir::tnode::PrimitiveType;
 use crate::compiler::lexer::{OperatorEnum, Token};
 use crate::compiler::module::ModuleId;
 
@@ -23,6 +23,10 @@ pub struct FieldId(pub usize);
 /// 用于 `path1::path2` 路径空间的 `SymbolID`
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PathId(pub ModuleId, pub MemberId);
+
+/// 用于泛型和推导类型回填的变量 `SymbolID`, 作用于 `HoleTable`
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct TypeVarId(pub usize);
 
 #[derive(Debug, Clone)]
 pub enum HirLit {
@@ -60,5 +64,5 @@ pub enum HirStmt {
 
 #[derive(Debug, Clone)]
 pub enum HirItem {
-    Func { blk: HirStmt, ret: TypeKind },
+    Func { blk: HirStmt, ret: PrimitiveType },
 }
