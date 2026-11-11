@@ -112,6 +112,15 @@ pub fn enum_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
     }
     let name = token;
     token = parser.get_token()?;
+
+    let generics = if matches!(token.get_type(), TokenType::Operator(OperatorEnum::Less)) {
+        let params = parser_generics(parser)?;
+        token = parser.get_token()?;
+        Some(params)
+    } else {
+        None
+    };
+
     let TokenType::Lp('{') = token.get_type() else {
         return Err(ParserError::Expected(token, '{'));
     };
@@ -122,7 +131,11 @@ pub fn enum_parser(parser: &mut Parser) -> Result<AstNode, ParserError> {
     if variants.is_empty() {
         return Err(ParserError::MissingEnumElement(token));
     }
-    Ok(AstNode::EnumDefine { name, variants })
+    Ok(AstNode::EnumDefine {
+        generics,
+        name,
+        variants,
+    })
 }
 
 fn field_parser(parser: &mut Parser) -> Result<Vec<(Token, TypeRef)>, ParserError> {

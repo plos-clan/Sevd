@@ -46,8 +46,13 @@ pub struct RefStruct {
     pub fields: Vec<(FieldId, RefAstType)>,
 }
 
+pub struct RefEnum {
+    pub variants: Vec<(FieldId, Vec<RefAstType>)>,
+}
+
 pub enum RefAst {
     Struct(ItemId, RefStruct),
+    Enum(ItemId, RefEnum),
 }
 
 impl ImportedName {

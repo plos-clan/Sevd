@@ -4,7 +4,7 @@ mod items;
 use crate::compiler::ir::hast::HastItem;
 use crate::compiler::sematic::Semantic;
 use crate::compiler::sematic::typeref::import::collect_import;
-use crate::compiler::sematic::typeref::items::ref_struct;
+use crate::compiler::sematic::typeref::items::{ref_enum, ref_struct};
 
 pub fn resolver(semantic: &mut Semantic, items: Vec<HastItem>) {
     let imports = collect_import(semantic, items.as_slice());
@@ -16,7 +16,7 @@ pub fn resolver(semantic: &mut Semantic, items: Vec<HastItem>) {
             HastItem::Function(_, _) => {}
             HastItem::Global(_) => {}
             HastItem::Struct(id, stc) => asts.push(ref_struct(semantic, id, stc, &imports)),
-            HastItem::Enum(id, enm) => {}
+            HastItem::Enum(id, enm) => asts.push(ref_enum(semantic, id, enm, &imports)),
         }
     }
 }

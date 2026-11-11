@@ -2,6 +2,7 @@ use super::{AnnotationElement, AstNode, ExprNode, TypeRef};
 use crate::compiler::ir::hir::{FieldId, ItemId, LocalId, MemberId, PathId};
 use crate::compiler::lexer::{OperatorEnum, Token};
 use crate::compiler::module::ModuleId;
+use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
 pub enum HastExpr {
@@ -106,8 +107,9 @@ pub struct HastStruct {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct HastEnum {
-    pub(crate) variants: Vec<(FieldId, Vec<TypeRef>)>,
-    pub(crate) attributes: Vec<(Token, Vec<AnnotationElement>)>,
+    pub generics: Option<Vec<Token>>,
+    pub variants: Vec<(FieldId, Vec<TypeRef>)>,
+    pub attributes: Vec<(Token, Vec<AnnotationElement>)>,
 }
 
 #[allow(dead_code)]

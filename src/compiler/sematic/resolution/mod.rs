@@ -77,10 +77,15 @@ fn semantic_item(
             fields.as_slice(),
             attributes,
         )),
-        AstNode::EnumDefine { name, variants } => Some(collect_enum(
+        AstNode::EnumDefine {
+            generics,
+            name,
+            variants,
+        } => Some(collect_enum(
             semantic,
             name,
             variants.as_slice(),
+            generics,
             attributes,
         )),
         AstNode::DefineElse { .. } => Some(resolution_global(semantic, node, attributes)),

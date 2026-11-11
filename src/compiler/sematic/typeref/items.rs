@@ -1,8 +1,10 @@
 use crate::compiler::com_error::SematicError;
 use crate::compiler::ir::TypeRef;
-use crate::compiler::ir::hast::HastStruct;
+use crate::compiler::ir::hast::{HastEnum, HastStruct};
 use crate::compiler::ir::hir::{FieldId, ItemId, TypeVarId};
-use crate::compiler::ir::refast::{ImportedName, RefAst, RefAstType, RefStruct, TypeDefId};
+use crate::compiler::ir::refast::{
+    ImportedName, RefAst, RefAstType, RefEnum, RefStruct, TypeDefId,
+};
 use crate::compiler::ir::tnode::PrimitiveType;
 use crate::compiler::lexer::Token;
 use crate::compiler::sematic::Semantic;
@@ -121,6 +123,37 @@ pub fn ref_struct(
         id,
         RefStruct {
             fields: raw_id.into_iter().zip(fields_types).collect(),
+        },
+    )
+}
+
+pub fn ref_enum(
+    semantic: &mut Semantic,
+    id: ItemId,
+    enm: HastEnum,
+    imports: &[ImportedName],
+) -> RefAst {
+    let (raw_id, types): (Vec<FieldId>, Vec<Vec<TypeRef>>) = enm.variants.into_iter().unzip();
+    let generic_names = enm.generics.unwrap_or_default();
+    let generic: Vec<(Token, TypeVarId)> = generic_names
+        .into_iter()
+        .map(|name| (name, semantic.symtbl.infer_mut().alloc_var_id()))
+        .collect();
+
+    let var_types: Vec<Vec<RefAstType>> = types
+        .into_iter()
+        .map(|raw_types| {
+            raw_types
+                .into_iter()
+                .map(|raw_type| ref_cast_unit(semantic, raw_type, imports, &generic))
+                .collect()
+        })
+        .collect();
+
+    RefAst::Enum(
+        id,
+        RefEnum {
+            variants: raw_id.into_iter().zip(var_types).collect(),
         },
     )
 }

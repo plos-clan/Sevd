@@ -66,6 +66,7 @@ pub fn collect_enum(
     semantic: &mut Semantic,
     name: Token,
     variants: &[(Token, Vec<TypeRef>)],
+    generics: Option<Vec<Token>>,
     attributes: Vec<(Token, Vec<AnnotationElement>)>,
 ) -> HastItem {
     let id = add_item(semantic, name, ItemType::Enum);
@@ -78,6 +79,7 @@ pub fn collect_enum(
     HastItem::Enum(
         id,
         HastEnum {
+            generics,
             variants: ids.into_iter().zip(refs).collect(),
             attributes,
         },

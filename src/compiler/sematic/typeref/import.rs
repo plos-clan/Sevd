@@ -4,6 +4,7 @@ use crate::compiler::ir::refast::{ImportedName, MemberDefId, TypeDefId};
 use crate::compiler::lexer::Token;
 use crate::compiler::module::ModuleId;
 use crate::compiler::sematic::Semantic;
+use std::collections::HashMap;
 
 fn collect_import_unit(
     semantic: &mut Semantic,
@@ -62,6 +63,58 @@ fn collect_import_unit(
     imports
 }
 
+/// 导入当前源文件已经定义的成员和类型
+fn collect_current_import(semantic: &Semantic) -> Vec<ImportedName> {
+    let current_id = semantic.symtbl.current_module();
+    let current_mod = semantic
+        .symtbl
+        .compiler()
+        .module(current_id)
+        .expect("current module must exist");
+
+    let mut members: HashMap<_, _> = current_mod
+        .members
+        .iter()
+        .map(|(id, token)| (token.get_span().text(), *id))
+        .collect();
+
+    let mut names = Vec::new();
+
+    for (id, item) in &current_mod.items {
+        let type_id = TypeDefId {
+            module: current_id,
+            item: *id,
+        };
+
+        let binding = match members.remove(item.name.get_span().text()) {
+            Some(member) => ImportedName::Double(
+                item.name.clone(),
+                type_id,
+                MemberDefId {
+                    module: current_id,
+                    member,
+                },
+            ),
+            None => ImportedName::TypeId(item.name.clone(), type_id),
+        };
+
+        names.push(binding);
+    }
+
+    for (id, token) in &current_mod.members {
+        if members.remove(token.get_span().text()).is_some() {
+            names.push(ImportedName::MemberId(
+                token.clone(),
+                MemberDefId {
+                    module: current_id,
+                    member: *id,
+                },
+            ));
+        }
+    }
+    names
+}
+
 pub fn collect_import(semantic: &mut Semantic, items: &[HastItem]) -> Vec<ImportedName> {
     let mut imports = vec![];
     for item in items {
@@ -69,5 +122,6 @@ pub fn collect_import(semantic: &mut Semantic, items: &[HastItem]) -> Vec<Import
             imports.append(&mut collect_import_unit(semantic, name.clone(), *module_id));
         }
     }
+    imports.append(&mut collect_current_import(semantic));
     imports
 }
