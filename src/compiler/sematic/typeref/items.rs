@@ -1,7 +1,7 @@
 use crate::compiler::com_error::SematicError;
 use crate::compiler::ir::TypeRef;
 use crate::compiler::ir::hast::{HastEnum, HastStruct};
-use crate::compiler::ir::hir::{FieldId, ItemId, TypeVarId};
+use crate::compiler::ir::hir::{ItemId, TypeVarId};
 use crate::compiler::ir::refast::{
     ImportedName, RefAst, RefAstType, RefEnum, RefStruct, TypeDefId,
 };
@@ -101,30 +101,28 @@ fn ref_cast_unit(
     }
 }
 
+#[inline]
+fn alloc_generic(semantic: &mut Semantic, generics: Option<Vec<Token>>) -> Vec<(Token, TypeVarId)> {
+    generics
+        .unwrap_or_default()
+        .into_iter()
+        .map(|name| (name, semantic.symtbl.infer_mut().alloc_var_id()))
+        .collect()
+}
+
 pub fn ref_struct(
     semantic: &mut Semantic,
     id: ItemId,
     stc: HastStruct,
     imports: &[ImportedName],
 ) -> RefAst {
-    let (raw_id, types): (Vec<FieldId>, Vec<TypeRef>) = stc.fields.into_iter().unzip();
-
-    let generic_names = stc.generics.unwrap_or_default();
-    let generic: Vec<(Token, TypeVarId)> = generic_names
+    let generic: Vec<(Token, TypeVarId)> = alloc_generic(semantic, stc.generics);
+    let fields = stc
+        .fields
         .into_iter()
-        .map(|name| (name, semantic.symtbl.infer_mut().alloc_var_id()))
+        .map(|(id, raw_type)| (id, ref_cast_unit(semantic, raw_type, imports, &generic)))
         .collect();
-
-    let fields_types: Vec<RefAstType> = types
-        .into_iter()
-        .map(|raw_type| ref_cast_unit(semantic, raw_type, imports, &generic))
-        .collect();
-    RefAst::Struct(
-        id,
-        RefStruct {
-            fields: raw_id.into_iter().zip(fields_types).collect(),
-        },
-    )
+    RefAst::Struct(id, RefStruct { fields })
 }
 
 pub fn ref_enum(
@@ -133,27 +131,21 @@ pub fn ref_enum(
     enm: HastEnum,
     imports: &[ImportedName],
 ) -> RefAst {
-    let (raw_id, types): (Vec<FieldId>, Vec<Vec<TypeRef>>) = enm.variants.into_iter().unzip();
-    let generic_names = enm.generics.unwrap_or_default();
-    let generic: Vec<(Token, TypeVarId)> = generic_names
-        .into_iter()
-        .map(|name| (name, semantic.symtbl.infer_mut().alloc_var_id()))
-        .collect();
+    let generic: Vec<(Token, TypeVarId)> = alloc_generic(semantic, enm.generics);
 
-    let var_types: Vec<Vec<RefAstType>> = types
+    let variants = enm
+        .variants
         .into_iter()
-        .map(|raw_types| {
-            raw_types
-                .into_iter()
-                .map(|raw_type| ref_cast_unit(semantic, raw_type, imports, &generic))
-                .collect()
+        .map(|(id, raw_types)| {
+            (
+                id,
+                raw_types
+                    .into_iter()
+                    .map(|raw_type| ref_cast_unit(semantic, raw_type, imports, &generic))
+                    .collect(),
+            )
         })
         .collect();
 
-    RefAst::Enum(
-        id,
-        RefEnum {
-            variants: raw_id.into_iter().zip(var_types).collect(),
-        },
-    )
+    RefAst::Enum(id, RefEnum { variants })
 }

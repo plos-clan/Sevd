@@ -5,9 +5,15 @@ use getopts_macro::getopts_options;
 use mimalloc::MiMalloc;
 use std::path::PathBuf;
 use std::process::exit;
+use std::string::ToString;
+use std::sync::LazyLock;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
+
+static VERSION: LazyLock<String> = LazyLock::new(|| {
+    format!("v{}-{} ",env!("CARGO_PKG_VERSION"),env!("GIT_HASH"))
+});
 
 struct Args {
     input: Vec<String>,
@@ -83,6 +89,11 @@ impl Args {
 
 fn main() {
     let args = Args::parser();
+
+    if args.version {
+        println!("{} {}",env!("CARGO_BIN_NAME"), VERSION.as_str());
+        exit(0)
+    }
 
     let mut compiler = Compiler::new(args.name.unwrap_or("default".to_string()));
     if let Err(error) = compiler.add_files(args.input) {
